@@ -66,18 +66,10 @@
 </head>
 <body>
 
-<div id="login-screen" class="card">
-  <h1>ورود به پنل دفتر</h1>
-  <input type="email" id="login-email" placeholder="ایمیل">
-  <input type="password" id="login-password" placeholder="رمز عبور">
-  <button onclick="doLogin()">ورود</button>
-  <div id="login-error" class="error-msg"></div>
-</div>
-
-<div id="app" class="container hidden">
+<div id="app" class="container">
   <div class="top-bar">
     <h1>پنل مدیریت دفتر</h1>
-    <button class="secondary" onclick="doLogout()">خروج</button>
+    <button onclick="window.location.href='/api/auth/login'">اتصال به گوگل کلندر</button>
   </div>
 
   <div class="tabs">
@@ -145,32 +137,7 @@
 
   const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-  // ---- ورود / خروج ----
-  async function doLogin() {
-    const email = document.getElementById('login-email').value;
-    const password = document.getElementById('login-password').value;
-    const { data, error } = await sb.auth.signInWithPassword({ email, password });
-    if (error) {
-      document.getElementById('login-error').innerText = "ایمیل یا رمز عبور اشتباه است.";
-      return;
-    }
-    showApp();
-  }
-
-  async function doLogout() {
-    await sb.auth.signOut();
-    document.getElementById('app').classList.add('hidden');
-    document.getElementById('login-screen').classList.remove('hidden');
-  }
-
-  async function checkSession() {
-    const { data } = await sb.auth.getSession();
-    if (data.session) showApp();
-  }
-
   function showApp() {
-    document.getElementById('login-screen').classList.add('hidden');
-    document.getElementById('app').classList.remove('hidden');
     loadClients();
     loadLeads();
     loadTasks();
@@ -254,6 +221,16 @@
     const client_id = document.getElementById('task-client').value || null;
     if (!title) return;
     await sb.from('tasks').insert([{ title, date, client_id, status: 'new' }]);
+
+    // ارسال به گوگل کلندر (در صورت وصل بودن)
+    if (date) {
+      fetch('/api/create-event', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title, date })
+      }).catch(() => {});
+    }
+
     document.getElementById('task-title').value = '';
     document.getElementById('task-date').value = '';
     loadTasks();
@@ -281,7 +258,7 @@
     if (table === 'tasks') loadTasks();
   }
 
-  checkSession();
+  showApp();
 </script>
 </body>
 </html>
