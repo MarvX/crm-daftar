@@ -27,13 +27,17 @@ export default async function handler(req, res) {
     const end = new Date(Date.UTC(year, month, 1));
 
     const profilesRes = await fetch(`${process.env.SUPABASE_URL}/rest/v1/profiles?select=*`, {
-      headers: { apikey: process.env.SUPABASE_ANON_KEY, Authorization: `Bearer ${process.env.SUPABASE_ANON_KEY}` }
+      headers: { apikey: process.env.SUPABASE_SERVICE_KEY, Authorization: `Bearer ${process.env.SUPABASE_SERVICE_KEY}` }
     });
     const profiles = await profilesRes.json();
+    if (!Array.isArray(profiles)) {
+      res.status(500).json({ error: 'خواندن پروفایل‌ها ناموفق بود', details: profiles });
+      return;
+    }
 
     const attRes = await fetch(
       `${process.env.SUPABASE_URL}/rest/v1/attendance?check_in=gte.${start.toISOString()}&check_in=lt.${end.toISOString()}&select=*&order=check_in.asc`,
-      { headers: { apikey: process.env.SUPABASE_ANON_KEY, Authorization: `Bearer ${process.env.SUPABASE_ANON_KEY}` } }
+      { headers: { apikey: process.env.SUPABASE_SERVICE_KEY, Authorization: `Bearer ${process.env.SUPABASE_SERVICE_KEY}` } }
     );
     const attendance = await attRes.json();
 
