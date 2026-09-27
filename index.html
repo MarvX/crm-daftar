@@ -64,9 +64,12 @@
   .error-msg { color: #dc2626; font-size: 13px; margin-top: 8px; }
   .counter { font-size: 40px; font-weight: bold; text-align: center; margin: 20px 0; color: var(--navy-light); }
   .user-badge { font-size: 12px; opacity: 0.85; }
-  [contenteditable="true"] { outline: none; border-bottom: 1px dashed var(--muted); cursor: text; }
-  [contenteditable="true"]:hover, [contenteditable="true"]:focus { border-bottom: 1px dashed var(--navy-light); background: rgba(52,45,115,0.05); }
-  .edit-hint { font-size: 11px; color: var(--muted); margin-bottom: 10px; }
+  .overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 100; padding: 20px; }
+  .modal { background: var(--surface); border-radius: var(--radius); padding: 20px; width: 100%; max-width: 420px; max-height: 85vh; overflow-y: auto; }
+  .modal h3 { margin-top: 0; margin-bottom: 14px; font-size: 16px; }
+  .modal label { display: block; font-size: 12px; color: var(--muted); margin: 10px 0 4px; }
+  .modal input, .modal select { width: 100%; }
+  .modal-actions { display: flex; gap: 8px; margin-top: 18px; justify-content: flex-end; }
 </style>
 </head>
 <body>
@@ -108,6 +111,8 @@
     <div id="section-tenders" class="hidden"></div>
   </main>
 </div>
+
+<div id="edit-modal-root"></div>
 
 <script src="app.js"></script>
 </body>
