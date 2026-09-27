@@ -55,7 +55,10 @@
       <h1>پنل مدیریت دفتر</h1>
       <div class="user-badge" id="user-badge"></div>
     </div>
-    <button class="secondary" onclick="doLogout()">خروج</button>
+    <div>
+      <button class="secondary hidden" id="calendar-btn" onclick="window.location.href='/api/auth/login'">اتصال به گوگل کلندر</button>
+      <button class="secondary" onclick="doLogout()">خروج</button>
+    </div>
   </div>
 
   <div class="tabs" id="tabs-bar"></div>
@@ -191,6 +194,7 @@
       loadLeads();
       loadTasks();
       loadAttendanceAll();
+      document.getElementById('calendar-btn').classList.remove('hidden');
     }
   }
 
