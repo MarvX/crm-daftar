@@ -7,54 +7,27 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   * { box-sizing: border-box; }
-  body {
-    font-family: Tahoma, Arial, sans-serif;
-    background: #f4f5f7;
-    margin: 0;
-    color: #222;
-  }
+  body { font-family: Tahoma, Arial, sans-serif; background: #f4f5f7; margin: 0; color: #222; }
   .container { max-width: 1000px; margin: 0 auto; padding: 20px; }
   h1 { font-size: 22px; margin-bottom: 4px; }
-  .card {
-    background: #fff;
-    border-radius: 10px;
-    padding: 18px;
-    margin-bottom: 18px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
-  }
-  input, select, textarea {
-    padding: 8px 10px;
-    border: 1px solid #ccc;
-    border-radius: 6px;
-    font-family: inherit;
-    font-size: 14px;
-  }
-  button {
-    background: #2563eb;
-    color: #fff;
-    border: none;
-    padding: 8px 16px;
-    border-radius: 6px;
-    cursor: pointer;
-    font-family: inherit;
-    font-size: 14px;
-  }
+  .card { background: #fff; border-radius: 10px; padding: 18px; margin-bottom: 18px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+  input, select, textarea { padding: 8px 10px; border: 1px solid #ccc; border-radius: 6px; font-family: inherit; font-size: 14px; }
+  button { background: #2563eb; color: #fff; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-family: inherit; font-size: 14px; }
   button:hover { background: #1d4ed8; }
   button.secondary { background: #6b7280; }
   button.danger { background: #dc2626; }
+  button.big { font-size: 18px; padding: 16px 32px; }
   table { width: 100%; border-collapse: collapse; margin-top: 10px; }
   th, td { text-align: right; padding: 8px; border-bottom: 1px solid #eee; font-size: 14px; }
   th { color: #666; font-weight: 600; }
   .row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
   .row input, .row select { flex: 1; min-width: 120px; }
-  .tabs { display: flex; gap: 8px; margin-bottom: 16px; }
+  .tabs { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
   .tab { padding: 8px 16px; border-radius: 8px; cursor: pointer; background: #e5e7eb; font-size: 14px; }
   .tab.active { background: #2563eb; color: #fff; }
   .hidden { display: none; }
-  .top-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
-  .status-badge {
-    padding: 2px 8px; border-radius: 12px; font-size: 12px; display: inline-block;
-  }
+  .top-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px; }
+  .status-badge { padding: 2px 8px; border-radius: 12px; font-size: 12px; display: inline-block; }
   .status-new { background: #dbeafe; color: #1e40af; }
   .status-progress { background: #fef3c7; color: #92400e; }
   .status-done { background: #d1fae5; color: #065f46; }
@@ -62,33 +35,64 @@
   #login-screen input { width: 100%; margin-bottom: 10px; }
   #login-screen button { width: 100%; }
   .error-msg { color: #dc2626; font-size: 13px; margin-top: 8px; }
+  .counter { font-size: 40px; font-weight: bold; text-align: center; margin: 20px 0; color: #2563eb; }
+  .user-badge { font-size: 13px; color: #555; }
 </style>
 </head>
 <body>
 
-<div id="app" class="container">
+<div id="login-screen" class="card">
+  <h1>ورود به پنل دفتر</h1>
+  <input type="text" id="login-username" placeholder="نام کاربری">
+  <input type="password" id="login-password" placeholder="رمز عبور">
+  <button onclick="doLogin()">ورود</button>
+  <div id="login-error" class="error-msg"></div>
+</div>
+
+<div id="app" class="container hidden">
   <div class="top-bar">
-    <h1>پنل مدیریت دفتر</h1>
-    <button onclick="window.location.href='/api/auth/login'">اتصال به گوگل کلندر</button>
+    <div>
+      <h1>پنل مدیریت دفتر</h1>
+      <div class="user-badge" id="user-badge"></div>
+    </div>
+    <button class="secondary" onclick="doLogout()">خروج</button>
   </div>
 
-  <div class="tabs">
-    <div class="tab active" data-tab="clients" onclick="switchTab('clients')">کارفرماها</div>
-    <div class="tab" data-tab="leads" onclick="switchTab('leads')">سرنخ‌ها</div>
-    <div class="tab" data-tab="tasks" onclick="switchTab('tasks')">کارها</div>
+  <div class="tabs" id="tabs-bar"></div>
+
+  <!-- حضور و غیاب -->
+  <div id="tab-attendance" class="card hidden">
+    <div class="counter" id="attendance-counter">--:--:--</div>
+    <div style="text-align:center;">
+      <button class="big" id="attendance-btn" onclick="toggleAttendance()">ثبت ورود</button>
+    </div>
+    <h3 style="margin-top:24px;">تاریخچه</h3>
+    <table>
+      <thead><tr><th>تاریخ</th><th>ورود</th><th>خروج</th><th>مدت</th></tr></thead>
+      <tbody id="attendance-table"></tbody>
+    </table>
+  </div>
+
+  <!-- کارهای من -->
+  <div id="tab-mytasks" class="card hidden">
+    <div class="row">
+      <input type="text" id="mytask-title" placeholder="عنوان کار">
+      <input type="date" id="mytask-date">
+      <button onclick="addMyTask()">افزودن</button>
+    </div>
+    <table>
+      <thead><tr><th id="mt-name-col" class="hidden">کارمند</th><th>عنوان</th><th>تاریخ</th><th>وضعیت</th><th></th></tr></thead>
+      <tbody id="mytasks-table"></tbody>
+    </table>
   </div>
 
   <!-- CLIENTS -->
-  <div id="tab-clients" class="card">
+  <div id="tab-clients" class="card hidden">
     <div class="row">
       <input type="text" id="client-name" placeholder="نام کارفرما">
       <input type="text" id="client-phone" placeholder="شماره تلفن">
       <input type="email" id="client-email" placeholder="ایمیل">
-      <select id="client-status">
-        <option value="new">جدید</option>
-        <option value="progress">در حال انجام</option>
-        <option value="done">تکمیل شده</option>
-      </select>
+      <select id="client-status"><option value="new">جدید</option><option value="progress">در حال انجام</option><option value="done">تکمیل شده</option></select>
       <button onclick="addClient()">افزودن کارفرما</button>
     </div>
     <table>
@@ -101,12 +105,8 @@
   <div id="tab-leads" class="card hidden">
     <div class="row">
       <input type="text" id="lead-name" placeholder="نام سرنخ">
-      <input type="text" id="lead-source" placeholder="منبع (اینستاگرام، معرفی و...)">
-      <select id="lead-status">
-        <option value="new">جدید</option>
-        <option value="progress">در حال پیگیری</option>
-        <option value="done">تبدیل به کارفرما</option>
-      </select>
+      <input type="text" id="lead-source" placeholder="منبع">
+      <select id="lead-status"><option value="new">جدید</option><option value="progress">در حال پیگیری</option><option value="done">تبدیل به کارفرما</option></select>
       <button onclick="addLead()">افزودن سرنخ</button>
     </div>
     <table>
@@ -115,7 +115,7 @@
     </table>
   </div>
 
-  <!-- TASKS -->
+  <!-- TASKS (CRM) -->
   <div id="tab-tasks" class="card hidden">
     <div class="row">
       <input type="text" id="task-title" placeholder="عنوان کار">
@@ -128,25 +128,92 @@
       <tbody id="tasks-table"></tbody>
     </table>
   </div>
+
+  <!-- ADMIN: ATTENDANCE ALL -->
+  <div id="tab-attendance-all" class="card hidden">
+    <h3>حضور و غیاب همه پرسنل</h3>
+    <table>
+      <thead><tr><th>نام</th><th>تاریخ</th><th>ورود</th><th>خروج</th><th>مدت</th></tr></thead>
+      <tbody id="attendance-all-table"></tbody>
+    </table>
+  </div>
 </div>
 
 <script>
-  // ---- تنظیمات اتصال به Supabase ----
   const SUPABASE_URL = "https://ooeedxwyjpcgurxeutdb.supabase.co";
   const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9vZWVkeHd5anBjZ3VyeGV1dGRiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAwNzM4NTEsImV4cCI6MjEwNTY0OTg1MX0.ZbDel9uPG0sSsdzWRbgvrH_inLA7IafmprYTpqhTPXQ";
-
   const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-  function showApp() {
-    loadClients();
-    loadLeads();
-    loadTasks();
+  let currentUser = null;
+  let currentProfile = null;
+  let attendanceTimer = null;
+  let activeCheckIn = null;
+
+  async function doLogin() {
+    const username = document.getElementById('login-username').value.trim();
+    const password = document.getElementById('login-password').value;
+    const email = username + '@daftar.local';
+    const { data, error } = await sb.auth.signInWithPassword({ email, password });
+    if (error) {
+      document.getElementById('login-error').innerText = "نام کاربری یا رمز عبور اشتباه است.";
+      return;
+    }
+    currentUser = data.user;
+    await loadProfileAndShowApp();
   }
 
-  // ---- تب‌ها ----
+  async function doLogout() {
+    await sb.auth.signOut();
+    clearInterval(attendanceTimer);
+    document.getElementById('app').classList.add('hidden');
+    document.getElementById('login-screen').classList.remove('hidden');
+  }
+
+  async function checkSession() {
+    const { data } = await sb.auth.getSession();
+    if (data.session) {
+      currentUser = data.session.user;
+      await loadProfileAndShowApp();
+    }
+  }
+
+  async function loadProfileAndShowApp() {
+    const { data: profile } = await sb.from('profiles').select('*').eq('id', currentUser.id).single();
+    currentProfile = profile || { full_name: currentUser.email, is_admin: false };
+    document.getElementById('login-screen').classList.add('hidden');
+    document.getElementById('app').classList.remove('hidden');
+    document.getElementById('user-badge').innerText = `${currentProfile.full_name || ''} ${currentProfile.role_title ? '— ' + currentProfile.role_title : ''}`;
+    buildTabs();
+    loadAttendanceStatus();
+    loadMyTasks();
+    if (currentProfile.is_admin) {
+      loadClients();
+      loadLeads();
+      loadTasks();
+      loadAttendanceAll();
+    }
+  }
+
+  function buildTabs() {
+    const bar = document.getElementById('tabs-bar');
+    let tabs = [
+      { id: 'attendance', label: 'ورود و خروج' },
+      { id: 'mytasks', label: 'کارهای من' }
+    ];
+    if (currentProfile.is_admin) {
+      tabs.push({ id: 'clients', label: 'کارفرماها' });
+      tabs.push({ id: 'leads', label: 'سرنخ‌ها' });
+      tabs.push({ id: 'tasks', label: 'کارهای دفتر' });
+      tabs.push({ id: 'attendance-all', label: 'حضور همه' });
+    }
+    bar.innerHTML = tabs.map((t, i) => `<div class="tab ${i===0?'active':''}" data-tab="${t.id}" onclick="switchTab('${t.id}')">${t.label}</div>`).join('');
+    switchTab(tabs[0].id);
+  }
+
   function switchTab(name) {
     document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-    document.querySelector(`.tab[data-tab="${name}"]`).classList.add('active');
+    const el = document.querySelector(`.tab[data-tab="${name}"]`);
+    if (el) el.classList.add('active');
     document.querySelectorAll('[id^="tab-"]').forEach(el => el.classList.add('hidden'));
     document.getElementById('tab-' + name).classList.remove('hidden');
   }
@@ -157,7 +224,132 @@
     return '<span class="status-badge status-done">تکمیل شده</span>';
   }
 
-  // ---- کارفرماها ----
+  // ---- حضور و غیاب ----
+  async function loadAttendanceStatus() {
+    const { data } = await sb.from('attendance')
+      .select('*')
+      .eq('user_id', currentUser.id)
+      .is('check_out', null)
+      .order('created_at', { ascending: false })
+      .limit(1);
+    if (data && data[0]) {
+      activeCheckIn = data[0];
+      document.getElementById('attendance-btn').innerText = 'ثبت خروج';
+      startCounter(new Date(activeCheckIn.check_in));
+    } else {
+      activeCheckIn = null;
+      document.getElementById('attendance-btn').innerText = 'ثبت ورود';
+      document.getElementById('attendance-counter').innerText = '--:--:--';
+      clearInterval(attendanceTimer);
+    }
+    loadMyAttendanceHistory();
+  }
+
+  function startCounter(startTime) {
+    clearInterval(attendanceTimer);
+    attendanceTimer = setInterval(() => {
+      const diff = Date.now() - startTime.getTime();
+      const h = String(Math.floor(diff / 3600000)).padStart(2, '0');
+      const m = String(Math.floor((diff % 3600000) / 60000)).padStart(2, '0');
+      const s = String(Math.floor((diff % 60000) / 1000)).padStart(2, '0');
+      document.getElementById('attendance-counter').innerText = `${h}:${m}:${s}`;
+    }, 1000);
+  }
+
+  async function toggleAttendance() {
+    if (activeCheckIn) {
+      await sb.from('attendance').update({ check_out: new Date().toISOString() }).eq('id', activeCheckIn.id);
+    } else {
+      await sb.from('attendance').insert([{ user_id: currentUser.id, check_in: new Date().toISOString() }]);
+    }
+    loadAttendanceStatus();
+  }
+
+  function formatDuration(inTime, outTime) {
+    if (!outTime) return '—';
+    const diff = new Date(outTime) - new Date(inTime);
+    const h = Math.floor(diff / 3600000);
+    const m = Math.floor((diff % 3600000) / 60000);
+    return `${h} ساعت ${m} دقیقه`;
+  }
+
+  async function loadMyAttendanceHistory() {
+    const { data } = await sb.from('attendance').select('*').eq('user_id', currentUser.id).order('check_in', { ascending: false }).limit(30);
+    const tbody = document.getElementById('attendance-table');
+    tbody.innerHTML = '';
+    if (!data) return;
+    data.forEach(a => {
+      tbody.innerHTML += `<tr>
+        <td>${new Date(a.check_in).toLocaleDateString('fa-IR')}</td>
+        <td>${new Date(a.check_in).toLocaleTimeString('fa-IR')}</td>
+        <td>${a.check_out ? new Date(a.check_out).toLocaleTimeString('fa-IR') : '—'}</td>
+        <td>${formatDuration(a.check_in, a.check_out)}</td>
+      </tr>`;
+    });
+  }
+
+  async function loadAttendanceAll() {
+    const { data } = await sb.from('attendance').select('*, profiles(full_name)').order('check_in', { ascending: false }).limit(100);
+    const tbody = document.getElementById('attendance-all-table');
+    tbody.innerHTML = '';
+    if (!data) return;
+    data.forEach(a => {
+      tbody.innerHTML += `<tr>
+        <td>${a.profiles ? a.profiles.full_name : '—'}</td>
+        <td>${new Date(a.check_in).toLocaleDateString('fa-IR')}</td>
+        <td>${new Date(a.check_in).toLocaleTimeString('fa-IR')}</td>
+        <td>${a.check_out ? new Date(a.check_out).toLocaleTimeString('fa-IR') : '—'}</td>
+        <td>${formatDuration(a.check_in, a.check_out)}</td>
+      </tr>`;
+    });
+  }
+
+  // ---- کارهای من ----
+  async function addMyTask() {
+    const title = document.getElementById('mytask-title').value.trim();
+    const due_date = document.getElementById('mytask-date').value;
+    if (!title) return;
+    await sb.from('personal_tasks').insert([{ user_id: currentUser.id, title, due_date, status: 'new' }]);
+    document.getElementById('mytask-title').value = '';
+    document.getElementById('mytask-date').value = '';
+    loadMyTasks();
+  }
+
+  async function loadMyTasks() {
+    let query;
+    if (currentProfile.is_admin) {
+      document.getElementById('mt-name-col').classList.remove('hidden');
+      query = sb.from('personal_tasks').select('*, profiles(full_name)').order('due_date', { ascending: true });
+    } else {
+      query = sb.from('personal_tasks').select('*').eq('user_id', currentUser.id).order('due_date', { ascending: true });
+    }
+    const { data } = await query;
+    const tbody = document.getElementById('mytasks-table');
+    tbody.innerHTML = '';
+    if (!data) return;
+    data.forEach(t => {
+      tbody.innerHTML += `<tr>
+        ${currentProfile.is_admin ? `<td>${t.profiles ? t.profiles.full_name : '—'}</td>` : ''}
+        <td>${t.title}</td><td>${t.due_date || ''}</td>
+        <td>${statusLabel(t.status)}</td>
+        <td>
+          ${t.status !== 'done' ? `<button onclick="completeMyTask('${t.id}')">انجام شد</button>` : ''}
+          <button class="danger" onclick="deleteMyTask('${t.id}')">حذف</button>
+        </td>
+      </tr>`;
+    });
+  }
+
+  async function completeMyTask(id) {
+    await sb.from('personal_tasks').update({ status: 'done' }).eq('id', id);
+    loadMyTasks();
+  }
+  async function deleteMyTask(id) {
+    await sb.from('personal_tasks').delete().eq('id', id);
+    loadMyTasks();
+  }
+
+  // ---- کارفرماها (فقط مدیر) ----
   async function addClient() {
     const name = document.getElementById('client-name').value.trim();
     const phone = document.getElementById('client-phone').value.trim();
@@ -172,7 +364,7 @@
   }
 
   async function loadClients() {
-    const { data, error } = await sb.from('clients').select('*').order('created_at', { ascending: false });
+    const { data } = await sb.from('clients').select('*').order('created_at', { ascending: false });
     const tbody = document.getElementById('clients-table');
     const clientSelect = document.getElementById('task-client');
     tbody.innerHTML = '';
@@ -188,7 +380,6 @@
     });
   }
 
-  // ---- سرنخ‌ها ----
   async function addLead() {
     const name = document.getElementById('lead-name').value.trim();
     const source = document.getElementById('lead-source').value.trim();
@@ -214,15 +405,12 @@
     });
   }
 
-  // ---- کارها ----
   async function addTask() {
     const title = document.getElementById('task-title').value.trim();
     const date = document.getElementById('task-date').value;
     const client_id = document.getElementById('task-client').value || null;
     if (!title) return;
     await sb.from('tasks').insert([{ title, date, client_id, status: 'new' }]);
-
-    // ارسال به گوگل کلندر (در صورت وصل بودن)
     if (date) {
       fetch('/api/create-event', {
         method: 'POST',
@@ -230,7 +418,6 @@
         body: JSON.stringify({ title, date })
       }).catch(() => {});
     }
-
     document.getElementById('task-title').value = '';
     document.getElementById('task-date').value = '';
     loadTasks();
@@ -250,7 +437,6 @@
     });
   }
 
-  // ---- حذف مشترک ----
   async function deleteRow(table, id) {
     await sb.from(table).delete().eq('id', id);
     if (table === 'clients') loadClients();
@@ -258,7 +444,7 @@
     if (table === 'tasks') loadTasks();
   }
 
-  showApp();
+  checkSession();
 </script>
 </body>
 </html>
