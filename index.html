@@ -134,7 +134,11 @@
 
   <!-- ADMIN: ATTENDANCE ALL -->
   <div id="tab-attendance-all" class="card hidden">
-    <h3>حضور و غیاب همه پرسنل</h3>
+    <div class="row">
+      <h3 style="margin:0;">حضور و غیاب همه پرسنل</h3>
+      <input type="month" id="export-month" style="margin-right:auto;">
+      <button onclick="exportTimesheet()">دریافت خروجی اکسل این ماه</button>
+    </div>
     <table>
       <thead><tr><th>نام</th><th>تاریخ</th><th>ورود</th><th>خروج</th><th>مدت</th></tr></thead>
       <tbody id="attendance-all-table"></tbody>
@@ -446,6 +450,13 @@
     if (table === 'clients') loadClients();
     if (table === 'leads') loadLeads();
     if (table === 'tasks') loadTasks();
+  }
+
+  async function exportTimesheet() {
+    const val = document.getElementById('export-month').value; // e.g. "2026-10"
+    if (!val) { alert('یه ماه انتخاب کن'); return; }
+    const [year, month] = val.split('-');
+    window.open(`/api/export-timesheet?year=${year}&month=${parseInt(month)}`, '_blank');
   }
 
   checkSession();
