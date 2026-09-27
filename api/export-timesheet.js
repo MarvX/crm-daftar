@@ -3,11 +3,6 @@ import jalaali from 'jalaali-js';
 
 const WEEKDAY_FA = ['یکشنبه', 'دوشنبه', 'سه شنبه', 'چهارشنبه', 'پنج شنبه', 'جمعه', 'شنبه'];
 
-function toJalaliStr(date) {
-  const j = jalaali.toJalaali(date.getFullYear(), date.getMonth() + 1, date.getDate());
-  return `${j.jy}-${String(j.jm).padStart(2, '0')}-${String(j.jd).padStart(2, '0')}`;
-}
-
 function timeStr(dateObj) {
   if (!dateObj) return '';
   return dateObj.toTimeString().slice(0, 5);
@@ -15,16 +10,21 @@ function timeStr(dateObj) {
 
 export default async function handler(req, res) {
   try {
-    const year = parseInt(req.query.year);
-    const month = parseInt(req.query.month); // 1-12 (میلادی)
+    const jy = parseInt(req.query.jy);
+    const jm = parseInt(req.query.jm); // 1-12 (ماه شمسی)
 
-    if (!year || !month) {
-      res.status(400).json({ error: 'سال و ماه لازم است' });
+    if (!jy || !jm) {
+      res.status(400).json({ error: 'سال و ماه شمسی لازم است' });
       return;
     }
 
-    const start = new Date(Date.UTC(year, month - 1, 1));
-    const end = new Date(Date.UTC(year, month, 1));
+    const daysInMonth = jalaali.jalaaliMonthLength(jy, jm);
+
+    // بازه کلی میلادی برای واکشی رکوردهای حضور (کمی حاشیه اطمینان)
+    const firstG = jalaali.toGregorian(jy, jm, 1);
+    const lastG = jalaali.toGregorian(jy, jm, daysInMonth);
+    const rangeStart = new Date(Date.UTC(firstG.gy, firstG.gm - 1, firstG.gd));
+    const rangeEnd = new Date(Date.UTC(lastG.gy, lastG.gm - 1, lastG.gd + 1));
 
     const profilesRes = await fetch(`${process.env.SUPABASE_URL}/rest/v1/profiles?select=*`, {
       headers: { apikey: process.env.SUPABASE_SERVICE_KEY, Authorization: `Bearer ${process.env.SUPABASE_SERVICE_KEY}` }
@@ -36,26 +36,32 @@ export default async function handler(req, res) {
     }
 
     const attRes = await fetch(
-      `${process.env.SUPABASE_URL}/rest/v1/attendance?check_in=gte.${start.toISOString()}&check_in=lt.${end.toISOString()}&select=*&order=check_in.asc`,
+      `${process.env.SUPABASE_URL}/rest/v1/attendance?check_in=gte.${rangeStart.toISOString()}&check_in=lt.${rangeEnd.toISOString()}&select=*&order=check_in.asc`,
       { headers: { apikey: process.env.SUPABASE_SERVICE_KEY, Authorization: `Bearer ${process.env.SUPABASE_SERVICE_KEY}` } }
     );
     const attendance = await attRes.json();
+    if (!Array.isArray(attendance)) {
+      res.status(500).json({ error: 'خواندن حضور و غیاب ناموفق بود', details: attendance });
+      return;
+    }
 
     const workbook = new ExcelJS.Workbook();
 
     for (const profile of profiles) {
       const records = attendance.filter(a => a.user_id === profile.id);
-      const sheet = workbook.addWorksheet(profile.full_name || profile.id.slice(0, 8));
+      const sheet = workbook.addWorksheet((profile.full_name || profile.id.slice(0, 8)).slice(0, 30));
 
       sheet.getCell('B3').value = `نام و نام خانوادگی: ${profile.full_name || ''}`;
       sheet.getRow(4).values = ['', 'روز', 'تاریخ', 'ساعت ورود', 'ساعت خروج', 'مجموع ساعت کار روزانه'];
 
       let rowIndex = 5;
       let weekTotalMinutes = 0;
-      const daysInMonth = new Date(Date.UTC(year, month, 0)).getUTCDate();
 
       for (let d = 1; d <= daysInMonth; d++) {
-        const dayDate = new Date(Date.UTC(year, month - 1, d));
+        const g = jalaali.toGregorian(jy, jm, d);
+        const dayDate = new Date(Date.UTC(g.gy, g.gm - 1, g.gd));
+        const weekday = dayDate.getUTCDay(); // 0=یکشنبه ... 6=شنبه (جدول جاوااسکریپت: 0=Sunday)
+
         const rec = records.find(r => {
           const ci = new Date(r.check_in);
           return ci.getUTCFullYear() === dayDate.getUTCFullYear() &&
@@ -70,8 +76,8 @@ export default async function handler(req, res) {
 
         sheet.getRow(rowIndex).values = [
           '',
-          WEEKDAY_FA[dayDate.getUTCDay()],
-          toJalaliStr(dayDate),
+          WEEKDAY_FA[weekday],
+          `${jy}-${String(jm).padStart(2, '0')}-${String(d).padStart(2, '0')}`,
           timeStr(checkIn),
           timeStr(checkOut),
           checkIn && checkOut ? `${Math.floor(minutes/60)}:${String(minutes%60).padStart(2,'0')}` : ''
@@ -79,14 +85,12 @@ export default async function handler(req, res) {
         rowIndex++;
         weekTotalMinutes += minutes;
 
-        if (dayDate.getUTCDay() === 5) { // پایان هفته (جمعه)
+        // پایان هفته: جمعه (weekday === 5)
+        if (weekday === 5 || d === daysInMonth) {
           sheet.getRow(rowIndex).values = ['', 'مجموع هفته', '', '', '', `${Math.floor(weekTotalMinutes/60)}:${String(weekTotalMinutes%60).padStart(2,'0')}`];
           rowIndex++;
           weekTotalMinutes = 0;
         }
-      }
-      if (weekTotalMinutes > 0) {
-        sheet.getRow(rowIndex).values = ['', 'مجموع هفته', '', '', '', `${Math.floor(weekTotalMinutes/60)}:${String(weekTotalMinutes%60).padStart(2,'0')}`];
       }
 
       sheet.views = [{ rightToLeft: true }];
@@ -95,7 +99,7 @@ export default async function handler(req, res) {
 
     const buffer = await workbook.xlsx.writeBuffer();
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    res.setHeader('Content-Disposition', `attachment; filename=timesheet-${year}-${month}.xlsx`);
+    res.setHeader('Content-Disposition', `attachment; filename=timesheet-${jy}-${jm}.xlsx`);
     res.status(200).send(Buffer.from(buffer));
   } catch (err) {
     res.status(500).json({ error: 'خطای داخلی', details: err.message });
