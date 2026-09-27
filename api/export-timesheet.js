@@ -1,5 +1,5 @@
-const ExcelJS = require('exceljs');
-const jalaali = require('jalaali-js');
+import ExcelJS from 'exceljs';
+import jalaali from 'jalaali-js';
 
 const WEEKDAY_FA = ['یکشنبه', 'دوشنبه', 'سه شنبه', 'چهارشنبه', 'پنج شنبه', 'جمعه', 'شنبه'];
 
@@ -13,7 +13,7 @@ function timeStr(dateObj) {
   return dateObj.toTimeString().slice(0, 5);
 }
 
-module.exports = async function handler(req, res) {
+export default async function handler(req, res) {
   try {
     const year = parseInt(req.query.year);
     const month = parseInt(req.query.month); // 1-12 (میلادی)
@@ -26,13 +26,11 @@ module.exports = async function handler(req, res) {
     const start = new Date(Date.UTC(year, month - 1, 1));
     const end = new Date(Date.UTC(year, month, 1));
 
-    // خواندن پروفایل‌ها
     const profilesRes = await fetch(`${process.env.SUPABASE_URL}/rest/v1/profiles?select=*`, {
       headers: { apikey: process.env.SUPABASE_ANON_KEY, Authorization: `Bearer ${process.env.SUPABASE_ANON_KEY}` }
     });
     const profiles = await profilesRes.json();
 
-    // خواندن رکوردهای حضور در بازه انتخابی
     const attRes = await fetch(
       `${process.env.SUPABASE_URL}/rest/v1/attendance?check_in=gte.${start.toISOString()}&check_in=lt.${end.toISOString()}&select=*&order=check_in.asc`,
       { headers: { apikey: process.env.SUPABASE_ANON_KEY, Authorization: `Bearer ${process.env.SUPABASE_ANON_KEY}` } }
@@ -98,4 +96,4 @@ module.exports = async function handler(req, res) {
   } catch (err) {
     res.status(500).json({ error: 'خطای داخلی', details: err.message });
   }
-};
+}
