@@ -1,0 +1,758 @@
+const SUPABASE_URL = "https://ooeedxwyjpcgurxeutdb.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9vZWVkeHd5anBjZ3VyeGV1dGRiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAwNzM4NTEsImV4cCI6MjEwNTY0OTg1MX0.ZbDel9uPG0sSsdzWRbgvrH_inLA7IafmprYTpqhTPXQ";
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+const STAGES = ["سرنخ جدید", "تماس اولیه", "جلسه برگزار شد", "پیشنهاد ارسال شد", "برنده", "بازنده"];
+const SPECIALTIES = ["ورزشی", "مسکونی", "تجاری-اداری", "بازسازی بافت فرسوده", "سایر"];
+const CLIENT_TYPES = ["خصوصی-مسکونی", "شرکتی-تجاری‌اداری", "دولتی-نهادی"];
+const PHASES = ["فاز صفر", "طراحی مفهومی", "طراحی تفصیلی (DD)", "اجرا", "نظارت", "تکمیل‌شده"];
+const PROJECT_STATUSES = ["فعال", "متوقف", "لغوشده", "تکمیل‌شده"];
+const CONTRACT_STATUSES = ["پیش‌نویس", "امضاشده", "فسخ‌شده"];
+const DEPARTMENTS = ["طراحی و اجرا - معماری", "طراحی و اجرا - داخلی", "طراحی و اجرا - نظارت", "توسعه بازار و ورزشی", "مالی و قرارداد", "مدیریت پروژه"];
+const ACCESS_LEVELS = ["مشاهده", "تعامل", "مدیریت"];
+const TASK_PRIORITIES = ["بالا", "متوسط", "پایین"];
+const TASK_STATUSES = ["در انتظار", "در حال انجام", "تکمیل‌شده"];
+const TENDER_TYPES = ["مناقصه", "مسابقه"];
+const TENDER_STATUSES = ["در حال بررسی", "ثبت‌نام‌شده", "برنده", "بازنده"];
+
+let currentUser = null, currentProfile = null;
+let attendanceTimer = null, activeCheckIn = null;
+let allProfiles = [];
+
+let leads = [], clients = [], projects = [], contracts = [], contractStagesMap = {},
+    members = [], erpTasks = [], fixedCosts = [], tenders = [], interactions = [];
+
+function escapeHtml(str) {
+  if (!str) return '';
+  return String(str).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+}
+function statusLabel(s) {
+  if (s === 'new') return '<span class="status-badge status-new">جدید</span>';
+  if (s === 'progress') return '<span class="status-badge status-progress">در حال انجام</span>';
+  return '<span class="status-badge status-done">تکمیل شده</span>';
+}
+function scoreClass(n) { return n >= 4 ? 'high' : n >= 3 ? 'mid' : 'low'; }
+
+// ================= AUTH =================
+async function doLogin() {
+  const username = document.getElementById('login-username').value.trim();
+  const password = document.getElementById('login-password').value;
+  const email = username + '@daftar.local';
+  const { data, error } = await sb.auth.signInWithPassword({ email, password });
+  if (error) { document.getElementById('login-error').innerText = "نام کاربری یا رمز عبور اشتباه است."; return; }
+  currentUser = data.user;
+  await loadProfileAndShowApp();
+}
+async function doLogout() {
+  await sb.auth.signOut();
+  clearInterval(attendanceTimer);
+  document.getElementById('app-root').classList.add('hidden');
+  document.getElementById('login-screen').classList.remove('hidden');
+}
+async function checkSession() {
+  const { data } = await sb.auth.getSession();
+  if (data.session) { currentUser = data.session.user; await loadProfileAndShowApp(); }
+}
+
+const NAV_ITEMS = [
+  { id: 'attendance', label: 'ورود و خروج' },
+  { id: 'tasks', label: 'کارها' },
+  { id: 'dashboard', label: 'داشبورد', adminOnly: true },
+  { id: 'pipeline', label: 'پایپ‌لاین سرنخ‌ها', adminOnly: true },
+  { id: 'clients', label: 'کارفرمایان', adminOnly: true },
+  { id: 'projects', label: 'پروژه‌ها', adminOnly: true },
+  { id: 'contracts', label: 'قراردادها و مطالبات', adminOnly: true },
+  { id: 'office-tasks', label: 'کارهای دفتر', adminOnly: true },
+  { id: 'team', label: 'تیم', adminOnly: true },
+  { id: 'erp-tasks', label: 'وظایف', adminOnly: true },
+  { id: 'costs', label: 'هزینه‌های ثابت', adminOnly: true },
+  { id: 'tenders', label: 'مناقصه / مسابقه', adminOnly: true },
+];
+
+async function loadProfileAndShowApp() {
+  const { data: profile } = await sb.from('profiles').select('*').eq('id', currentUser.id).single();
+  currentProfile = profile || { full_name: currentUser.email, is_admin: false };
+  document.getElementById('login-screen').classList.add('hidden');
+  document.getElementById('app-root').classList.remove('hidden');
+  document.getElementById('user-badge').innerText = `${currentProfile.full_name || ''} ${currentProfile.role_title ? '— ' + currentProfile.role_title : ''}`;
+
+  buildNav();
+  switchSection('attendance');
+  loadAttendanceStatus();
+  loadMyTasks();
+
+  if (currentProfile.is_admin) {
+    document.getElementById('calendar-btn').classList.remove('hidden');
+    const { data: profs } = await sb.from('profiles').select('*');
+    allProfiles = profs || [];
+    refreshAllErpData();
+  }
+}
+
+function buildNav() {
+  const nav = document.getElementById('top-nav');
+  const visible = NAV_ITEMS.filter(t => !t.adminOnly || currentProfile.is_admin);
+  nav.innerHTML = visible.map((t,i) => `<button data-id="${t.id}" class="${i===0?'active':''}" onclick="switchSection('${t.id}')">${t.label}</button>`).join('');
+}
+
+function switchSection(id) {
+  document.querySelectorAll('#top-nav button').forEach(b => b.classList.toggle('active', b.dataset.id === id));
+  document.querySelectorAll('main > div').forEach(d => d.classList.add('hidden'));
+  document.getElementById('section-' + id).classList.remove('hidden');
+  const renderMap = {
+    dashboard: renderDashboard, pipeline: renderPipeline, clients: renderClients,
+    projects: renderProjects, contracts: renderContracts, team: renderTeam,
+    'erp-tasks': renderErpTasks, costs: renderFixedCosts, tenders: renderTenders,
+    'office-tasks': renderOfficeTasks
+  };
+  if (id === 'attendance') renderAttendanceSection();
+  else if (id === 'tasks') renderTasksSection();
+  else if (renderMap[id]) document.getElementById('section-' + id).innerHTML = renderMap[id]();
+}
+
+async function refreshAllErpData() {
+  const [l, c, p, ct, m, et, fc, td, itr] = await Promise.all([
+    sb.from('leads').select('*').order('created_at', { ascending: false }),
+    sb.from('clients').select('*').order('created_at', { ascending: false }),
+    sb.from('projects').select('*').order('created_at', { ascending: false }),
+    sb.from('contracts').select('*').order('created_at', { ascending: false }),
+    sb.from('members').select('*').order('created_at', { ascending: false }),
+    sb.from('erp_tasks').select('*').order('created_at', { ascending: false }),
+    sb.from('fixed_costs').select('*').order('created_at', { ascending: false }),
+    sb.from('tenders').select('*').order('created_at', { ascending: false }),
+    sb.from('interactions').select('*').order('created_at', { ascending: false }),
+  ]);
+  leads = l.data || []; clients = c.data || []; projects = p.data || []; contracts = ct.data || [];
+  members = m.data || []; erpTasks = et.data || []; fixedCosts = fc.data || []; tenders = td.data || [];
+  interactions = itr.data || [];
+
+  const { data: stages } = await sb.from('contract_stages').select('*');
+  contractStagesMap = {};
+  (stages || []).forEach(s => {
+    if (!contractStagesMap[s.contract_id]) contractStagesMap[s.contract_id] = [];
+    contractStagesMap[s.contract_id].push(s);
+  });
+
+  const current = document.querySelector('#top-nav button.active');
+  if (current) switchSection(current.dataset.id);
+}
+
+// ================= حضور و غیاب =================
+function renderAttendanceSection() {
+  const el = document.getElementById('section-attendance');
+  const adminBlock = currentProfile.is_admin ? `
+    <div class="card">
+      <div class="row-top">
+        <h2>حضور و غیاب همه پرسنل</h2>
+        <div class="row" style="margin:0;">
+          <select id="export-jy"></select>
+          <select id="export-jm"></select>
+          <button class="btn small" onclick="exportTimesheet()">دریافت خروجی اکسل این ماه</button>
+        </div>
+      </div>
+      <table><thead><tr><th>نام</th><th>تاریخ</th><th>ورود</th><th>خروج</th><th>مدت</th></tr></thead><tbody id="attendance-all-table"></tbody></table>
+    </div>` : '';
+  el.innerHTML = `
+    <div class="card">
+      <div class="counter" id="attendance-counter">--:--:--</div>
+      <div style="text-align:center;"><button class="btn big" id="attendance-btn" onclick="toggleAttendance()">ثبت ورود</button></div>
+      <h3 style="margin-top:24px;">تاریخچه</h3>
+      <table><thead><tr><th>تاریخ</th><th>ورود</th><th>خروج</th><th>مدت</th></tr></thead><tbody id="attendance-table"></tbody></table>
+    </div>
+    ${adminBlock}
+  `;
+  loadAttendanceStatus();
+  if (currentProfile.is_admin) { loadAttendanceAll(); fillJalaliSelectors(); }
+}
+
+async function loadAttendanceStatus() {
+  const { data } = await sb.from('attendance').select('*').eq('user_id', currentUser.id).is('check_out', null).order('created_at', { ascending: false }).limit(1);
+  const btn = document.getElementById('attendance-btn');
+  if (!btn) return;
+  if (data && data[0]) {
+    activeCheckIn = data[0]; btn.innerText = 'ثبت خروج'; startCounter(new Date(activeCheckIn.check_in));
+  } else {
+    activeCheckIn = null; btn.innerText = 'ثبت ورود';
+    document.getElementById('attendance-counter').innerText = '--:--:--'; clearInterval(attendanceTimer);
+  }
+  loadMyAttendanceHistory();
+}
+function startCounter(startTime) {
+  clearInterval(attendanceTimer);
+  attendanceTimer = setInterval(() => {
+    const diff = Date.now() - startTime.getTime();
+    const h = String(Math.floor(diff/3600000)).padStart(2,'0');
+    const m = String(Math.floor((diff%3600000)/60000)).padStart(2,'0');
+    const s = String(Math.floor((diff%60000)/1000)).padStart(2,'0');
+    const c = document.getElementById('attendance-counter');
+    if (c) c.innerText = `${h}:${m}:${s}`;
+  }, 1000);
+}
+async function toggleAttendance() {
+  if (activeCheckIn) await sb.from('attendance').update({ check_out: new Date().toISOString() }).eq('id', activeCheckIn.id);
+  else await sb.from('attendance').insert([{ user_id: currentUser.id, check_in: new Date().toISOString() }]);
+  loadAttendanceStatus();
+}
+function formatDuration(inTime, outTime) {
+  if (!outTime) return '—';
+  const diff = new Date(outTime) - new Date(inTime);
+  return `${Math.floor(diff/3600000)} ساعت ${Math.floor((diff%3600000)/60000)} دقیقه`;
+}
+async function loadMyAttendanceHistory() {
+  const { data } = await sb.from('attendance').select('*').eq('user_id', currentUser.id).order('check_in', { ascending: false }).limit(30);
+  const tbody = document.getElementById('attendance-table'); if (!tbody) return;
+  tbody.innerHTML = (data||[]).map(a => `<tr>
+    <td>${new Date(a.check_in).toLocaleDateString('fa-IR')}</td>
+    <td>${new Date(a.check_in).toLocaleTimeString('fa-IR')}</td>
+    <td>${a.check_out ? new Date(a.check_out).toLocaleTimeString('fa-IR') : '—'}</td>
+    <td>${formatDuration(a.check_in, a.check_out)}</td>
+  </tr>`).join('');
+}
+async function loadAttendanceAll() {
+  const { data } = await sb.from('attendance').select('*, profiles(full_name)').order('check_in', { ascending: false }).limit(100);
+  const tbody = document.getElementById('attendance-all-table'); if (!tbody) return;
+  tbody.innerHTML = (data||[]).map(a => `<tr>
+    <td>${a.profiles ? a.profiles.full_name : '—'}</td>
+    <td>${new Date(a.check_in).toLocaleDateString('fa-IR')}</td>
+    <td>${new Date(a.check_in).toLocaleTimeString('fa-IR')}</td>
+    <td>${a.check_out ? new Date(a.check_out).toLocaleTimeString('fa-IR') : '—'}</td>
+    <td>${formatDuration(a.check_in, a.check_out)}</td>
+  </tr>`).join('');
+}
+const JALALI_MONTHS = ['فروردین','اردیبهشت','خرداد','تیر','مرداد','شهریور','مهر','آبان','آذر','دی','بهمن','اسفند'];
+function fillJalaliSelectors() {
+  const nowYear = new Date().getFullYear(); const baseJY = nowYear - 621;
+  const yearSel = document.getElementById('export-jy'), monthSel = document.getElementById('export-jm');
+  if (!yearSel) return;
+  yearSel.innerHTML = ''; for (let y=baseJY-1; y<=baseJY+1; y++) yearSel.innerHTML += `<option value="${y}" ${y===baseJY?'selected':''}>${y}</option>`;
+  monthSel.innerHTML = JALALI_MONTHS.map((m,i) => `<option value="${i+1}">${m}</option>`).join('');
+}
+function exportTimesheet() {
+  const jy = document.getElementById('export-jy').value, jm = document.getElementById('export-jm').value;
+  if (!jy || !jm) { alert('سال و ماه رو انتخاب کن'); return; }
+  window.open(`/api/export-timesheet?jy=${jy}&jm=${jm}`, '_blank');
+}
+
+// ================= کارها (شخصی) =================
+function renderTasksSection() {
+  const el = document.getElementById('section-tasks');
+  const teamBlock = currentProfile.is_admin ? `
+    <div class="card">
+      <div class="row-top"><h2>کارهای کارمندان</h2></div>
+      <div class="row">
+        <select id="team-task-employee"></select>
+        <input type="text" id="team-task-title" placeholder="عنوان کار">
+        <input type="date" id="team-task-date">
+        <button class="btn" onclick="addTeamTask()">محول کردن کار</button>
+      </div>
+      <table><thead><tr><th>کارمند</th><th>عنوان</th><th>تاریخ</th><th>وضعیت</th><th></th></tr></thead><tbody id="teamtasks-table"></tbody></table>
+    </div>` : '';
+  el.innerHTML = `
+    <div class="card">
+      <div class="row-top"><h2>کارهای من</h2></div>
+      <div class="row">
+        <input type="text" id="mytask-title" placeholder="عنوان کار">
+        <input type="date" id="mytask-date">
+        <button class="btn" onclick="addMyTask()">افزودن</button>
+      </div>
+      <table><thead><tr><th>عنوان</th><th>تاریخ</th><th>وضعیت</th><th></th></tr></thead><tbody id="mytasks-table"></tbody></table>
+    </div>
+    ${teamBlock}
+  `;
+  loadMyTasks();
+  if (currentProfile.is_admin) { fillEmployeeSelect(); loadTeamTasks(); }
+}
+async function addMyTask() {
+  const title = document.getElementById('mytask-title').value.trim();
+  const due_date = document.getElementById('mytask-date').value;
+  if (!title) return;
+  await sb.from('personal_tasks').insert([{ user_id: currentUser.id, title, due_date, status: 'new' }]);
+  document.getElementById('mytask-title').value=''; document.getElementById('mytask-date').value='';
+  loadMyTasks();
+}
+async function loadMyTasks() {
+  const { data } = await sb.from('personal_tasks').select('*').eq('user_id', currentUser.id).order('due_date', { ascending: true });
+  const tbody = document.getElementById('mytasks-table'); if (!tbody) return;
+  tbody.innerHTML = (data||[]).map(t => `<tr>
+    <td>${t.title}</td><td>${t.due_date||''}</td><td>${statusLabel(t.status)}</td>
+    <td>${t.status!=='done'?`<button class="btn small" onclick="completeMyTask('${t.id}')">انجام شد</button>`:''} <button class="btn small danger" onclick="deleteMyTask('${t.id}')">حذف</button></td>
+  </tr>`).join('');
+}
+async function completeMyTask(id) { await sb.from('personal_tasks').update({ status:'done' }).eq('id', id); loadMyTasks(); if (currentProfile.is_admin) loadTeamTasks(); }
+async function deleteMyTask(id) { await sb.from('personal_tasks').delete().eq('id', id); loadMyTasks(); if (currentProfile.is_admin) loadTeamTasks(); }
+function fillEmployeeSelect() {
+  const sel = document.getElementById('team-task-employee'); if (!sel) return;
+  sel.innerHTML = allProfiles.map(p => `<option value="${p.id}">${p.full_name || p.id.slice(0,8)}</option>`).join('');
+}
+async function addTeamTask() {
+  const user_id = document.getElementById('team-task-employee').value;
+  const title = document.getElementById('team-task-title').value.trim();
+  const due_date = document.getElementById('team-task-date').value;
+  if (!title || !user_id) return;
+  await sb.from('personal_tasks').insert([{ user_id, title, due_date, status:'new' }]);
+  document.getElementById('team-task-title').value=''; document.getElementById('team-task-date').value='';
+  loadTeamTasks();
+}
+async function loadTeamTasks() {
+  const { data } = await sb.from('personal_tasks').select('*, profiles(full_name)').order('due_date', { ascending: true });
+  const tbody = document.getElementById('teamtasks-table'); if (!tbody) return;
+  tbody.innerHTML = (data||[]).map(t => `<tr>
+    <td>${t.profiles?t.profiles.full_name:'—'}</td><td>${t.title}</td><td>${t.due_date||''}</td><td>${statusLabel(t.status)}</td>
+    <td><button class="btn small danger" onclick="deleteTeamTask('${t.id}')">حذف</button></td>
+  </tr>`).join('');
+}
+async function deleteTeamTask(id) { await sb.from('personal_tasks').delete().eq('id', id); loadTeamTasks(); }
+
+// ================= داشبورد =================
+function renderDashboard() {
+  const activeLeads = leads.filter(l => l.stage !== 'برنده' && l.stage !== 'بازنده').length;
+  const won = leads.filter(l => l.stage === 'برنده').length;
+  const lost = leads.filter(l => l.stage === 'بازنده').length;
+  const total = won + lost;
+  const conv = total > 0 ? Math.round((won/total)*100) : 0;
+  const activeProjects = projects.filter(p => p.status === 'فعال').length;
+  let overdueSum = 0, pendingSum = 0;
+  Object.values(contractStagesMap).flat().forEach(s => {
+    const eff = stageEffectiveStatus(s);
+    if (eff === 'سررسید گذشته') overdueSum += (s.amount||0);
+    if (eff === 'در انتظار') pendingSum += (s.amount||0);
+  });
+  const monthlyCosts = fixedCosts.reduce((a,c) => a + (c.monthly_amount||0), 0);
+  const netFlow = pendingSum - monthlyCosts;
+  const todayStr = new Date().toISOString().slice(0,10);
+  const upcoming = interactions.filter(i => i.next_follow_up_date && i.next_follow_up_date >= todayStr)
+    .sort((a,b) => new Date(a.next_follow_up_date)-new Date(b.next_follow_up_date)).slice(0,6);
+
+  return `
+    <div class="grid-stats">
+      <div class="stat"><div class="num">${activeLeads}</div><div class="label">سرنخ فعال</div></div>
+      <div class="stat"><div class="num">${clients.length}</div><div class="label">کارفرما</div></div>
+      <div class="stat"><div class="num">${conv}%</div><div class="label">نرخ تبدیل</div></div>
+      <div class="stat"><div class="num">${activeProjects}</div><div class="label">پروژه فعال</div></div>
+      <div class="stat"><div class="num" style="color:var(--danger);">${overdueSum.toLocaleString('fa-IR')}</div><div class="label">مطالبات معوق (تومان)</div></div>
+    </div>
+    <div class="card">
+      <div class="row-top" style="margin-bottom:0;">
+        <div><h2 style="margin:0;">جریان نقدی برآوردی</h2><div class="meta" style="color:var(--muted);font-size:12px;">مطالبات در انتظار منهای هزینه ثابت ماهانه</div></div>
+        <div class="num" style="font-size:22px;color:${netFlow>=0?'var(--success)':'var(--danger)'};">${netFlow.toLocaleString('fa-IR')} تومان</div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>پیگیری‌های نزدیک</h2>
+      ${upcoming.length ? upcoming.map(i => `<div style="border-bottom:1px solid var(--border);padding:10px 0;font-size:13px;">
+        <strong>${escapeHtml(i.related_name||'')}</strong> — ${escapeHtml(i.type)}
+        <div style="color:var(--muted);font-size:11px;">${escapeHtml(i.note||'')} ${i.next_follow_up_date===todayStr?'· امروز':'· '+i.next_follow_up_date}</div>
+      </div>`).join('') : '<div class="empty">پیگیری‌ای ثبت نشده</div>'}
+    </div>
+  `;
+}
+
+// ================= پایپ‌لاین سرنخ‌ها =================
+function renderPipeline() {
+  let html = `
+    <div class="row-top"><h2>پایپ‌لاین سرنخ‌ها</h2></div>
+    <div class="card">
+      <div class="row">
+        <input type="text" id="lead-name" placeholder="نام سرنخ">
+        <input type="text" id="lead-source" placeholder="منبع">
+        <select id="lead-specialty"><option value="">دسته تخصصی</option>${SPECIALTIES.map(s=>`<option>${s}</option>`).join('')}</select>
+        <button class="btn" onclick="addLead()">+ سرنخ جدید</button>
+      </div>
+    </div>
+    <div class="pipeline">`;
+  STAGES.forEach(stage => {
+    const items = leads.filter(l => l.stage === stage);
+    html += `<div class="stage-col"><h3>${stage} <span>${items.length}</span></h3>`;
+    if (!items.length) html += `<div class="empty" style="padding:10px 0;">—</div>`;
+    items.forEach(l => {
+      const idx = STAGES.indexOf(l.stage) + 1;
+      const nextStage = idx < STAGES.length - 2 ? STAGES[idx] : null;
+      html += `<div class="lead-card">
+        <div class="name">${escapeHtml(l.name)}</div>
+        <div class="meta">${l.specialty_category?`<span class="tag">${l.specialty_category}</span>`:''}${l.source?escapeHtml(l.source):''}</div>
+        <div class="actions">
+          ${nextStage?`<button class="btn small secondary" onclick="updateLeadStage('${l.id}','${nextStage}')">→ ${nextStage}</button>`:''}
+          ${stage!=='برنده'&&stage!=='بازنده'?`<button class="btn small secondary" onclick="updateLeadStage('${l.id}','بازنده')">بازنده</button>`:''}
+          ${stage!=='برنده'?`<button class="btn small" onclick="convertLeadToClient('${l.id}')">تبدیل به کارفرما</button>`:''}
+          <button class="btn small danger" onclick="deleteLead('${l.id}')">حذف</button>
+        </div>
+      </div>`;
+    });
+    html += `</div>`;
+  });
+  html += `</div>`;
+  return html;
+}
+async function addLead() {
+  const name = document.getElementById('lead-name').value.trim();
+  const source = document.getElementById('lead-source').value.trim();
+  const specialty_category = document.getElementById('lead-specialty').value;
+  if (!name) return;
+  await sb.from('leads').insert([{ name, source, specialty_category, stage: STAGES[0], status: 'new' }]);
+  refreshAllErpData();
+}
+async function updateLeadStage(id, stage) { await sb.from('leads').update({ stage }).eq('id', id); refreshAllErpData(); }
+async function deleteLead(id) { await sb.from('leads').delete().eq('id', id); refreshAllErpData(); }
+async function convertLeadToClient(id) {
+  const lead = leads.find(x => x.id === id); if (!lead) return;
+  await sb.from('clients').insert([{ name: lead.name, type: CLIENT_TYPES[1], contact_info: lead.source || '', reliability_score: 3, status: 'new' }]);
+  await updateLeadStage(id, 'برنده');
+}
+
+// ================= کارفرمایان =================
+function renderClients() {
+  let html = `
+    <div class="row-top"><h2>کارفرمایان</h2></div>
+    <div class="card">
+      <div class="row">
+        <input type="text" id="client-name" placeholder="نام کارفرما">
+        <select id="client-type"><option value="">نوع</option>${CLIENT_TYPES.map(t=>`<option>${t}</option>`).join('')}</select>
+        <input type="text" id="client-contact" placeholder="اطلاعات تماس">
+        <select id="client-score">${[1,2,3,4,5].map(n=>`<option value="${n}" ${n===3?'selected':''}>امتیاز اعتبار ${n}</option>`).join('')}</select>
+        <button class="btn" onclick="addClient()">+ کارفرمای جدید</button>
+      </div>
+    </div>
+    <div class="card">`;
+  if (!clients.length) html += `<div class="empty">هنوز کارفرمایی ثبت نشده</div>`;
+  else {
+    html += `<table><thead><tr><th>نام</th><th>نوع</th><th>امتیاز اعتبار</th><th>تماس</th><th></th></tr></thead><tbody>`;
+    clients.forEach(c => {
+      html += `<tr>
+        <td>${escapeHtml(c.name)}</td><td>${escapeHtml(c.type||'')}</td>
+        <td class="score ${scoreClass(c.reliability_score||3)}">${c.reliability_score||3}/۵</td>
+        <td>${escapeHtml(c.contact_info||c.phone||'')}</td>
+        <td><button class="btn small danger" onclick="deleteRow('clients','${c.id}')">حذف</button></td>
+      </tr>`;
+    });
+    html += `</tbody></table>`;
+  }
+  html += `</div>`;
+  return html;
+}
+async function addClient() {
+  const name = document.getElementById('client-name').value.trim();
+  const type = document.getElementById('client-type').value;
+  const contact_info = document.getElementById('client-contact').value.trim();
+  const reliability_score = parseInt(document.getElementById('client-score').value);
+  if (!name) return;
+  await sb.from('clients').insert([{ name, type, contact_info, reliability_score, status: 'new' }]);
+  refreshAllErpData();
+}
+
+// ================= پروژه‌ها =================
+function renderProjects() {
+  let html = `<div class="row-top"><h2>پروژه‌ها</h2></div>
+    <div class="card">
+      <div class="row">
+        <input type="text" id="project-title" placeholder="عنوان پروژه">
+        <select id="project-client"><option value="">— کارفرما —</option>${clients.map(c=>`<option value="${c.id}" data-name="${escapeHtml(c.name)}">${escapeHtml(c.name)}</option>`).join('')}</select>
+        <input type="text" id="project-responsible" placeholder="مسئول پروژه">
+        <select id="project-specialty"><option value="">دسته تخصصی</option>${SPECIALTIES.map(s=>`<option>${s}</option>`).join('')}</select>
+        <button class="btn" onclick="addProject()">+ پروژه جدید</button>
+      </div>
+    </div>`;
+  if (!projects.length) { html += `<div class="card"><div class="empty">هنوز پروژه‌ای ثبت نشده</div></div>`; return html; }
+  projects.forEach(p => {
+    html += `<div class="card">
+      <div class="row-top" style="margin-bottom:6px;">
+        <div><strong>${escapeHtml(p.title)}</strong> ${p.specialty_category?`<span class="tag">${p.specialty_category}</span>`:''}
+          <div style="color:var(--muted);font-size:12px;">کارفرما: ${escapeHtml(p.client_name||'—')} · مسئول: ${escapeHtml(p.responsible_member||'—')}</div>
+        </div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;">
+          <select onchange="updateProjectField('${p.id}','phase',this.value)" style="width:auto;">${PHASES.map(ph=>`<option ${ph===p.phase?'selected':''}>${ph}</option>`).join('')}</select>
+          <select onchange="updateProjectField('${p.id}','status',this.value)" style="width:auto;">${PROJECT_STATUSES.map(s=>`<option ${s===p.status?'selected':''}>${s}</option>`).join('')}</select>
+          <button class="btn small danger" onclick="deleteRow('projects','${p.id}')">حذف</button>
+        </div>
+      </div>
+    </div>`;
+  });
+  return html;
+}
+async function addProject() {
+  const title = document.getElementById('project-title').value.trim();
+  const clientSel = document.getElementById('project-client');
+  const client_id = clientSel.value || null;
+  const client_name = clientSel.selectedOptions[0] ? clientSel.selectedOptions[0].dataset.name : '';
+  const responsible_member = document.getElementById('project-responsible').value.trim();
+  const specialty_category = document.getElementById('project-specialty').value;
+  if (!title) return;
+  await sb.from('projects').insert([{ title, client_id, client_name, responsible_member, specialty_category }]);
+  refreshAllErpData();
+}
+async function updateProjectField(id, field, value) { await sb.from('projects').update({ [field]: value }).eq('id', id); refreshAllErpData(); }
+
+// ================= قراردادها =================
+function renderContracts() {
+  const allStages = Object.entries(contractStagesMap).flatMap(([cid, arr]) => arr);
+  const overdue = allStages.filter(s => stageEffectiveStatus(s) === 'سررسید گذشته');
+  const pending = allStages.filter(s => stageEffectiveStatus(s) === 'در انتظار');
+  let html = `<div class="row-top"><h2>قراردادها و مطالبات</h2></div>
+    <div class="grid-stats">
+      <div class="stat"><div class="num">${overdue.length}</div><div class="label">مرحله سررسید گذشته</div></div>
+      <div class="stat"><div class="num">${overdue.reduce((a,s)=>a+(s.amount||0),0).toLocaleString('fa-IR')}</div><div class="label">مبلغ معوق</div></div>
+      <div class="stat"><div class="num">${pending.length}</div><div class="label">مرحله در انتظار</div></div>
+      <div class="stat"><div class="num">${pending.reduce((a,s)=>a+(s.amount||0),0).toLocaleString('fa-IR')}</div><div class="label">مبلغ در انتظار</div></div>
+    </div>
+    <div class="card">
+      <div class="row">
+        <select id="contract-project"><option value="">— پروژه —</option>${projects.map(p=>`<option value="${p.id}" data-title="${escapeHtml(p.title)}">${escapeHtml(p.title)}</option>`).join('')}</select>
+        <input type="number" id="contract-amount" placeholder="مبلغ کل (تومان)">
+        <input type="number" id="contract-advance" placeholder="درصد پیش‌پرداخت">
+        <button class="btn" onclick="addContract()">+ قرارداد جدید</button>
+      </div>
+    </div>`;
+  if (!contracts.length) { html += `<div class="card"><div class="empty">هنوز قراردادی ثبت نشده</div></div>`; return html; }
+  contracts.forEach(c => {
+    const stages = contractStagesMap[c.id] || [];
+    html += `<div class="card">
+      <div class="row-top" style="margin-bottom:6px;">
+        <div><strong>${escapeHtml(c.project_title||'—')}</strong>
+          <div style="color:var(--muted);font-size:12px;">مبلغ کل: ${(c.total_amount||0).toLocaleString('fa-IR')} تومان · پیش‌پرداخت: ${c.advance_payment_percent||0}٪</div>
+        </div>
+        <select onchange="updateContractField('${c.id}','status',this.value)" style="width:auto;">${CONTRACT_STATUSES.map(s=>`<option ${s===c.status?'selected':''}>${s}</option>`).join('')}</select>
+      </div>
+      <div class="row">
+        <input type="text" placeholder="عنوان مرحله" id="stage-title-${c.id}">
+        <input type="number" placeholder="مبلغ" id="stage-amount-${c.id}">
+        <input type="date" id="stage-date-${c.id}">
+        <button class="btn small" onclick="addStage('${c.id}')">+ مرحله</button>
+      </div>
+      <table><thead><tr><th>مرحله</th><th>مبلغ</th><th>سررسید</th><th>وضعیت</th><th></th></tr></thead><tbody>
+        ${stages.map(s => { const eff = stageEffectiveStatus(s); const cls = eff==='وصول‌شده'?'high':eff==='سررسید گذشته'?'low':'mid';
+          return `<tr><td>${escapeHtml(s.title)}</td><td>${(s.amount||0).toLocaleString('fa-IR')}</td><td>${s.due_date||'—'}</td>
+          <td class="score ${cls}">${eff}</td>
+          <td>${eff!=='وصول‌شده'?`<button class="btn small secondary" onclick="markStageReceived('${s.id}')">وصول شد</button>`:''}</td></tr>`;
+        }).join('')}
+      </tbody></table>
+    </div>`;
+  });
+  return html;
+}
+function stageEffectiveStatus(s) {
+  if (s.received) return 'وصول‌شده';
+  if (s.due_date && new Date(s.due_date) < new Date(new Date().toDateString())) return 'سررسید گذشته';
+  return 'در انتظار';
+}
+async function addContract() {
+  const sel = document.getElementById('contract-project');
+  const project_id = sel.value || null;
+  const project_title = sel.selectedOptions[0] ? sel.selectedOptions[0].dataset.title : '';
+  const total_amount = parseFloat(document.getElementById('contract-amount').value) || 0;
+  const advance_payment_percent = parseInt(document.getElementById('contract-advance').value) || 0;
+  await sb.from('contracts').insert([{ project_id, project_title, total_amount, advance_payment_percent }]);
+  refreshAllErpData();
+}
+async function updateContractField(id, field, value) { await sb.from('contracts').update({ [field]: value }).eq('id', id); refreshAllErpData(); }
+async function addStage(contractId) {
+  const title = document.getElementById(`stage-title-${contractId}`).value.trim();
+  const amount = parseFloat(document.getElementById(`stage-amount-${contractId}`).value) || 0;
+  const due_date = document.getElementById(`stage-date-${contractId}`).value || null;
+  if (!title) return;
+  await sb.from('contract_stages').insert([{ contract_id: contractId, title, amount, due_date }]);
+  refreshAllErpData();
+}
+async function markStageReceived(stageId) { await sb.from('contract_stages').update({ received: true }).eq('id', stageId); refreshAllErpData(); }
+
+// ================= کارهای دفتر (CRM tasks + کلندر) =================
+function renderOfficeTasks() {
+  let html = `<div class="row-top"><h2>کارهای دفتر</h2></div>
+    <div class="card">
+      <div class="row">
+        <input type="text" id="task-title" placeholder="عنوان کار">
+        <input type="date" id="task-date">
+        <select id="task-client"><option value="">— انتخاب کارفرما —</option>${clients.map(c=>`<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('')}</select>
+        <button class="btn" onclick="addOfficeTask()">افزودن کار</button>
+      </div>
+    </div>
+    <div class="card"><table><thead><tr><th>عنوان</th><th>تاریخ</th><th>مربوط به</th><th>وضعیت</th><th></th></tr></thead><tbody id="tasks-table"></tbody></table></div>`;
+  loadOfficeTasks();
+  return html;
+}
+async function addOfficeTask() {
+  const title = document.getElementById('task-title').value.trim();
+  const date = document.getElementById('task-date').value;
+  const client_id = document.getElementById('task-client').value || null;
+  if (!title) return;
+  await sb.from('tasks').insert([{ title, date, client_id, status: 'new' }]);
+  if (date) fetch('/api/create-event', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ title, date }) }).catch(()=>{});
+  document.getElementById('task-title').value=''; document.getElementById('task-date').value='';
+  loadOfficeTasks();
+}
+async function loadOfficeTasks() {
+  const { data } = await sb.from('tasks').select('*, clients(name)').order('date', { ascending: true });
+  const tbody = document.getElementById('tasks-table'); if (!tbody) return;
+  tbody.innerHTML = (data||[]).map(t => `<tr>
+    <td>${t.title}</td><td>${t.date||''}</td><td>${t.clients?t.clients.name:'-'}</td><td>${statusLabel(t.status)}</td>
+    <td><button class="btn small danger" onclick="deleteRow('tasks','${t.id}')">حذف</button></td>
+  </tr>`).join('');
+}
+
+// ================= تیم =================
+function renderTeam() {
+  let html = `<div class="row-top"><h2>تیم</h2></div>
+    <div class="card">
+      <div class="row">
+        <input type="text" id="member-name" placeholder="نام عضو">
+        <select id="member-department"><option value="">واحد</option>${DEPARTMENTS.map(d=>`<option>${d}</option>`).join('')}</select>
+        <select id="member-access"><option value="">سطح دسترسی</option>${ACCESS_LEVELS.map(a=>`<option>${a}</option>`).join('')}</select>
+        <button class="btn" onclick="addMember()">+ عضو جدید</button>
+      </div>
+    </div>
+    <div class="card">`;
+  if (!members.length) html += `<div class="empty">هنوز عضوی ثبت نشده</div>`;
+  else {
+    html += `<table><thead><tr><th>نام</th><th>واحد</th><th>سطح دسترسی</th><th></th></tr></thead><tbody>`;
+    members.forEach(m => html += `<tr><td>${escapeHtml(m.name)}</td><td>${escapeHtml(m.department||'')}</td><td>${escapeHtml(m.access_level||'')}</td>
+      <td><button class="btn small danger" onclick="deleteRow('members','${m.id}')">حذف</button></td></tr>`);
+    html += `</tbody></table>`;
+  }
+  html += `</div>`;
+  return html;
+}
+async function addMember() {
+  const name = document.getElementById('member-name').value.trim();
+  const department = document.getElementById('member-department').value;
+  const access_level = document.getElementById('member-access').value;
+  if (!name) return;
+  await sb.from('members').insert([{ name, department, access_level }]);
+  refreshAllErpData();
+}
+
+// ================= وظایف (ERP) =================
+function renderErpTasks() {
+  let html = `<div class="row-top"><h2>وظایف</h2></div>
+    <div class="card">
+      <div class="row">
+        <input type="text" id="erptask-title" placeholder="عنوان وظیفه">
+        <input type="text" id="erptask-responsible" placeholder="مسئول">
+        <select id="erptask-priority">${TASK_PRIORITIES.map(p=>`<option>${p}</option>`).join('')}</select>
+        <input type="date" id="erptask-date">
+        <label style="display:flex;align-items:center;gap:4px;font-size:12px;"><input type="checkbox" id="erptask-approval" checked style="width:auto;"> نیازمند تأیید مؤسس</label>
+        <button class="btn" onclick="addErpTask()">+ وظیفه جدید</button>
+      </div>
+    </div>
+    <div class="pipeline">`;
+  TASK_STATUSES.forEach(status => {
+    const items = erpTasks.filter(t => t.status === status);
+    html += `<div class="stage-col"><h3>${status} <span>${items.length}</span></h3>`;
+    if (!items.length) html += `<div class="empty" style="padding:10px 0;">—</div>`;
+    items.forEach(t => {
+      const idx = TASK_STATUSES.indexOf(t.status) + 1;
+      const next = idx < TASK_STATUSES.length ? TASK_STATUSES[idx] : null;
+      html += `<div class="lead-card">
+        <div class="name">${escapeHtml(t.title)}</div>
+        <div class="meta">${t.responsible_member_name?escapeHtml(t.responsible_member_name):'بدون مسئول'} · اولویت ${escapeHtml(t.priority||'')} ${t.due_date?'· '+t.due_date:''}</div>
+        <div class="meta" style="margin-bottom:6px;">${t.requires_founder_approval?'<span class="tag">نیازمند تأیید مؤسس</span>':'<span class="tag">مستقل</span>'}</div>
+        <div class="actions">
+          ${next?`<button class="btn small secondary" onclick="updateErpTask('${t.id}','status','${next}')">→ ${next}</button>`:''}
+          <button class="btn small secondary" onclick="updateErpTask('${t.id}','requires_founder_approval',${!t.requires_founder_approval})">تغییر وضعیت تأیید</button>
+          <button class="btn small danger" onclick="deleteRow('erp_tasks','${t.id}')">حذف</button>
+        </div>
+      </div>`;
+    });
+    html += `</div>`;
+  });
+  html += `</div>`;
+  return html;
+}
+async function addErpTask() {
+  const title = document.getElementById('erptask-title').value.trim();
+  const responsible_member_name = document.getElementById('erptask-responsible').value.trim();
+  const priority = document.getElementById('erptask-priority').value;
+  const due_date = document.getElementById('erptask-date').value || null;
+  const requires_founder_approval = document.getElementById('erptask-approval').checked;
+  if (!title) return;
+  await sb.from('erp_tasks').insert([{ title, responsible_member_name, priority, due_date, requires_founder_approval, status: TASK_STATUSES[0] }]);
+  refreshAllErpData();
+}
+async function updateErpTask(id, field, value) { await sb.from('erp_tasks').update({ [field]: value }).eq('id', id); refreshAllErpData(); }
+
+// ================= هزینه‌های ثابت =================
+function renderFixedCosts() {
+  const totalMonthly = fixedCosts.reduce((a,c)=>a+(c.monthly_amount||0),0);
+  const unpaid = fixedCosts.filter(c=>c.payment_status!=='پرداخت‌شده');
+  const unpaidSum = unpaid.reduce((a,c)=>a+(c.monthly_amount||0),0);
+  let html = `<div class="row-top"><h2>هزینه‌های ثابت دفتر</h2></div>
+    <div class="grid-stats">
+      <div class="stat"><div class="num">${totalMonthly.toLocaleString('fa-IR')}</div><div class="label">مجموع ماهانه</div></div>
+      <div class="stat"><div class="num" style="color:${unpaidSum>0?'var(--danger)':'var(--success)'};">${unpaidSum.toLocaleString('fa-IR')}</div><div class="label">پرداخت‌نشده</div></div>
+    </div>
+    <div class="card">
+      <div class="row">
+        <input type="text" id="cost-title" placeholder="عنوان هزینه">
+        <input type="number" id="cost-amount" placeholder="مبلغ ماهانه">
+        <input type="number" id="cost-day" placeholder="روز سررسید" min="1" max="31">
+        <button class="btn" onclick="addFixedCost()">+ هزینه جدید</button>
+      </div>`;
+  if (!fixedCosts.length) html += `<div class="empty">هنوز هزینه ثابتی ثبت نشده</div>`;
+  else {
+    html += `<table><thead><tr><th>عنوان</th><th>مبلغ ماهانه</th><th>سررسید</th><th>وضعیت</th><th></th></tr></thead><tbody>`;
+    fixedCosts.forEach(c => { const paid = c.payment_status === 'پرداخت‌شده';
+      html += `<tr><td>${escapeHtml(c.title)}</td><td>${(c.monthly_amount||0).toLocaleString('fa-IR')}</td><td>روز ${c.due_day||1}</td>
+      <td class="score ${paid?'high':'low'}">${c.payment_status}</td>
+      <td><button class="btn small secondary" onclick="toggleCostPaid('${c.id}',${paid})">${paid?'پرداخت‌نشده کن':'پرداخت‌شده کن'}</button></td></tr>`;
+    });
+    html += `</tbody></table>`;
+  }
+  html += `</div>`;
+  return html;
+}
+async function addFixedCost() {
+  const title = document.getElementById('cost-title').value.trim();
+  const monthly_amount = parseFloat(document.getElementById('cost-amount').value) || 0;
+  const due_day = parseInt(document.getElementById('cost-day').value) || 1;
+  if (!title) return;
+  await sb.from('fixed_costs').insert([{ title, monthly_amount, due_day }]);
+  refreshAllErpData();
+}
+async function toggleCostPaid(id, currentlyPaid) {
+  await sb.from('fixed_costs').update({ payment_status: currentlyPaid ? 'پرداخت‌نشده' : 'پرداخت‌شده' }).eq('id', id);
+  refreshAllErpData();
+}
+
+// ================= مناقصه / مسابقه =================
+function renderTenders() {
+  const sportsTenders = tenders.filter(t => t.specialty_category === 'ورزشی');
+  const won = tenders.filter(t => t.status === 'برنده').length;
+  let html = `<div class="row-top"><h2>مناقصه / مسابقه</h2></div>
+    <div class="grid-stats">
+      <div class="stat"><div class="num">${tenders.length}</div><div class="label">کل ثبت‌شده</div></div>
+      <div class="stat"><div class="num">${sportsTenders.length}</div><div class="label">دسته ورزشی</div></div>
+      <div class="stat"><div class="num">${won}</div><div class="label">برنده‌شده</div></div>
+    </div>
+    <div class="card">
+      <div class="row">
+        <input type="text" id="tender-title" placeholder="عنوان">
+        <select id="tender-type">${TENDER_TYPES.map(t=>`<option>${t}</option>`).join('')}</select>
+        <input type="text" id="tender-issuer" placeholder="برگزارکننده">
+        <select id="tender-specialty"><option value="">دسته</option>${SPECIALTIES.map(s=>`<option>${s}</option>`).join('')}</select>
+        <input type="date" id="tender-date">
+        <button class="btn" onclick="addTender()">+ جدید</button>
+      </div>
+    </div>`;
+  if (!tenders.length) { html += `<div class="card"><div class="empty">هنوز مناقصه/مسابقه‌ای ثبت نشده</div></div>`; return html; }
+  html += `<div class="card"><table><thead><tr><th>عنوان</th><th>نوع</th><th>برگزارکننده</th><th>دسته</th><th>تاریخ</th><th>وضعیت</th></tr></thead><tbody>`;
+  tenders.forEach(t => {
+    html += `<tr><td>${escapeHtml(t.title)}</td><td>${escapeHtml(t.type||'')}</td><td>${escapeHtml(t.issuing_body||'')}</td>
+      <td>${t.specialty_category?`<span class="tag">${t.specialty_category}</span>`:''}</td><td>${t.event_date||'—'}</td>
+      <td><select onchange="updateTenderStatus('${t.id}',this.value)" style="width:auto;">${TENDER_STATUSES.map(s=>`<option ${s===t.status?'selected':''}>${s}</option>`).join('')}</select></td></tr>`;
+  });
+  html += `</tbody></table></div>`;
+  return html;
+}
+async function addTender() {
+  const title = document.getElementById('tender-title').value.trim();
+  const type = document.getElementById('tender-type').value;
+  const issuing_body = document.getElementById('tender-issuer').value.trim();
+  const specialty_category = document.getElementById('tender-specialty').value;
+  const event_date = document.getElementById('tender-date').value || null;
+  if (!title) return;
+  await sb.from('tenders').insert([{ title, type, issuing_body, specialty_category, event_date }]);
+  refreshAllErpData();
+}
+async function updateTenderStatus(id, status) { await sb.from('tenders').update({ status }).eq('id', id); refreshAllErpData(); }
+
+// ================= عمومی =================
+async function deleteRow(table, id) { await sb.from(table).delete().eq('id', id); refreshAllErpData(); }
+
+checkSession();
