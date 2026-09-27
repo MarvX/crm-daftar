@@ -136,7 +136,8 @@
   <div id="tab-attendance-all" class="card hidden">
     <div class="row">
       <h3 style="margin:0;">حضور و غیاب همه پرسنل</h3>
-      <input type="month" id="export-month" style="margin-right:auto;">
+      <select id="export-jy" style="margin-right:auto;"></select>
+      <select id="export-jm"></select>
       <button onclick="exportTimesheet()">دریافت خروجی اکسل این ماه</button>
     </div>
     <table>
@@ -452,13 +453,28 @@
     if (table === 'tasks') loadTasks();
   }
 
-  async function exportTimesheet() {
-    const val = document.getElementById('export-month').value; // e.g. "2026-10"
-    if (!val) { alert('یه ماه انتخاب کن'); return; }
-    const [year, month] = val.split('-');
-    window.open(`/api/export-timesheet?year=${year}&month=${parseInt(month)}`, '_blank');
+  const JALALI_MONTHS = ['فروردین','اردیبهشت','خرداد','تیر','مرداد','شهریور','مهر','آبان','آذر','دی','بهمن','اسفند'];
+  function fillJalaliSelectors() {
+    // تخمین سال شمسی فعلی از روی سال میلادی
+    const nowYear = new Date().getFullYear();
+    const baseJY = nowYear - 621; // تقریبی، برای ساخت لیست کافیه
+    const yearSel = document.getElementById('export-jy');
+    const monthSel = document.getElementById('export-jm');
+    yearSel.innerHTML = '';
+    for (let y = baseJY - 1; y <= baseJY + 1; y++) {
+      yearSel.innerHTML += `<option value="${y}" ${y===baseJY?'selected':''}>${y}</option>`;
+    }
+    monthSel.innerHTML = JALALI_MONTHS.map((m, i) => `<option value="${i+1}">${m}</option>`).join('');
   }
 
+  async function exportTimesheet() {
+    const jy = document.getElementById('export-jy').value;
+    const jm = document.getElementById('export-jm').value;
+    if (!jy || !jm) { alert('سال و ماه رو انتخاب کن'); return; }
+    window.open(`/api/export-timesheet?jy=${jy}&jm=${jm}`, '_blank');
+  }
+
+  fillJalaliSelectors();
   checkSession();
 </script>
 </body>
