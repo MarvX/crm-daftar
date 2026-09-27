@@ -274,7 +274,7 @@ async function loadMyTasks() {
   const { data } = await sb.from('personal_tasks').select('*').eq('user_id', currentUser.id).order('due_date', { ascending: true });
   const tbody = document.getElementById('mytasks-table'); if (!tbody) return;
   tbody.innerHTML = (data||[]).map(t => `<tr>
-    <td>${t.title}</td><td>${t.due_date||''}</td><td>${statusLabel(t.status)}</td>
+    <td ${editableAttrs('personal_tasks',t.id,'title')}>${t.title}</td><td>${t.due_date||''}</td><td>${statusLabel(t.status)}</td>
     <td>${t.status!=='done'?`<button class="btn small" onclick="completeMyTask('${t.id}')">انجام شد</button>`:''} <button class="btn small danger" onclick="deleteMyTask('${t.id}')">حذف</button></td>
   </tr>`).join('');
 }
@@ -297,7 +297,7 @@ async function loadTeamTasks() {
   const { data } = await sb.from('personal_tasks').select('*, profiles(full_name)').order('due_date', { ascending: true });
   const tbody = document.getElementById('teamtasks-table'); if (!tbody) return;
   tbody.innerHTML = (data||[]).map(t => `<tr>
-    <td>${t.profiles?t.profiles.full_name:'—'}</td><td>${t.title}</td><td>${t.due_date||''}</td><td>${statusLabel(t.status)}</td>
+    <td>${t.profiles?t.profiles.full_name:'—'}</td><td ${editableAttrs('personal_tasks',t.id,'title')}>${t.title}</td><td>${t.due_date||''}</td><td>${statusLabel(t.status)}</td>
     <td><button class="btn small danger" onclick="deleteTeamTask('${t.id}')">حذف</button></td>
   </tr>`).join('');
 }
@@ -368,8 +368,8 @@ function renderPipeline() {
       const idx = STAGES.indexOf(l.stage) + 1;
       const nextStage = idx < STAGES.length - 2 ? STAGES[idx] : null;
       html += `<div class="lead-card">
-        <div class="name">${escapeHtml(l.name)}</div>
-        <div class="meta">${l.specialty_category?`<span class="tag">${l.specialty_category}</span>`:''}${l.source?escapeHtml(l.source):''}</div>
+        <div class="name" ${editableAttrs('leads',l.id,'name')}>${escapeHtml(l.name)}</div>
+        <div class="meta">${l.specialty_category?`<span class="tag">${l.specialty_category}</span>`:''}<span ${editableAttrs('leads',l.id,'source')}>${l.source?escapeHtml(l.source):''}</span></div>
         <div class="actions">
           ${nextStage?`<button class="btn small secondary" onclick="updateLeadStage('${l.id}','${nextStage}')">→ ${nextStage}</button>`:''}
           ${stage!=='برنده'&&stage!=='بازنده'?`<button class="btn small secondary" onclick="updateLeadStage('${l.id}','بازنده')">بازنده</button>`:''}
@@ -418,9 +418,10 @@ function renderClients() {
     html += `<table><thead><tr><th>نام</th><th>نوع</th><th>امتیاز اعتبار</th><th>تماس</th><th></th></tr></thead><tbody>`;
     clients.forEach(c => {
       html += `<tr>
-        <td>${escapeHtml(c.name)}</td><td>${escapeHtml(c.type||'')}</td>
-        <td class="score ${scoreClass(c.reliability_score||3)}">${c.reliability_score||3}/۵</td>
-        <td>${escapeHtml(c.contact_info||c.phone||'')}</td>
+        <td ${editableAttrs('clients',c.id,'name')}>${escapeHtml(c.name)}</td>
+        <td><select onchange="sb.from('clients').update({type:this.value}).eq('id','${c.id}')" style="width:auto;"><option value="">نوع</option>${CLIENT_TYPES.map(t=>`<option ${t===c.type?'selected':''}>${t}</option>`).join('')}</select></td>
+        <td><select onchange="sb.from('clients').update({reliability_score:parseInt(this.value)}).eq('id','${c.id}')" style="width:auto;">${[1,2,3,4,5].map(n=>`<option value="${n}" ${n===(c.reliability_score||3)?'selected':''}>${n}</option>`).join('')}</select></td>
+        <td ${editableAttrs('clients',c.id,'contact_info')}>${escapeHtml(c.contact_info||c.phone||'')}</td>
         <td><button class="btn small danger" onclick="deleteRow('clients','${c.id}')">حذف</button></td>
       </tr>`;
     });
@@ -455,8 +456,8 @@ function renderProjects() {
   projects.forEach(p => {
     html += `<div class="card">
       <div class="row-top" style="margin-bottom:6px;">
-        <div><strong>${escapeHtml(p.title)}</strong> ${p.specialty_category?`<span class="tag">${p.specialty_category}</span>`:''}
-          <div style="color:var(--muted);font-size:12px;">کارفرما: ${escapeHtml(p.client_name||'—')} · مسئول: ${escapeHtml(p.responsible_member||'—')}</div>
+        <div><strong ${editableAttrs('projects',p.id,'title')}>${escapeHtml(p.title)}</strong> ${p.specialty_category?`<span class="tag">${p.specialty_category}</span>`:''}
+          <div style="color:var(--muted);font-size:12px;">کارفرما: ${escapeHtml(p.client_name||'—')} · مسئول: <span ${editableAttrs('projects',p.id,'responsible_member')}>${escapeHtml(p.responsible_member||'—')}</span></div>
         </div>
         <div style="display:flex;gap:6px;flex-wrap:wrap;">
           <select onchange="updateProjectField('${p.id}','phase',this.value)" style="width:auto;">${PHASES.map(ph=>`<option ${ph===p.phase?'selected':''}>${ph}</option>`).join('')}</select>
@@ -507,7 +508,7 @@ function renderContracts() {
     html += `<div class="card">
       <div class="row-top" style="margin-bottom:6px;">
         <div><strong>${escapeHtml(c.project_title||'—')}</strong>
-          <div style="color:var(--muted);font-size:12px;">مبلغ کل: ${(c.total_amount||0).toLocaleString('fa-IR')} تومان · پیش‌پرداخت: ${c.advance_payment_percent||0}٪</div>
+          <div style="color:var(--muted);font-size:12px;">مبلغ کل: <span ${editableAttrs('contracts',c.id,'total_amount','number')}>${(c.total_amount||0)}</span> تومان · پیش‌پرداخت: <span ${editableAttrs('contracts',c.id,'advance_payment_percent','number')}>${c.advance_payment_percent||0}</span>٪</div>
         </div>
         <select onchange="updateContractField('${c.id}','status',this.value)" style="width:auto;">${CONTRACT_STATUSES.map(s=>`<option ${s===c.status?'selected':''}>${s}</option>`).join('')}</select>
       </div>
@@ -519,7 +520,7 @@ function renderContracts() {
       </div>
       <table><thead><tr><th>مرحله</th><th>مبلغ</th><th>سررسید</th><th>وضعیت</th><th></th></tr></thead><tbody>
         ${stages.map(s => { const eff = stageEffectiveStatus(s); const cls = eff==='وصول‌شده'?'high':eff==='سررسید گذشته'?'low':'mid';
-          return `<tr><td>${escapeHtml(s.title)}</td><td>${(s.amount||0).toLocaleString('fa-IR')}</td><td>${s.due_date||'—'}</td>
+          return `<tr><td ${editableAttrs('contract_stages',s.id,'title')}>${escapeHtml(s.title)}</td><td ${editableAttrs('contract_stages',s.id,'amount','number')}>${(s.amount||0)}</td><td ${editableAttrs('contract_stages',s.id,'due_date')}>${s.due_date||'—'}</td>
           <td class="score ${cls}">${eff}</td>
           <td>${eff!=='وصول‌شده'?`<button class="btn small secondary" onclick="markStageReceived('${s.id}')">وصول شد</button>`:''}</td></tr>`;
         }).join('')}
@@ -582,7 +583,7 @@ async function loadOfficeTasks() {
   const { data } = await sb.from('tasks').select('*, clients(name)').order('date', { ascending: true });
   const tbody = document.getElementById('tasks-table'); if (!tbody) return;
   tbody.innerHTML = (data||[]).map(t => `<tr>
-    <td>${t.title}</td><td>${t.date||''}</td><td>${t.clients?t.clients.name:'-'}</td><td>${statusLabel(t.status)}</td>
+    <td ${editableAttrs('tasks',t.id,'title')}>${t.title}</td><td>${t.date||''}</td><td>${t.clients?t.clients.name:'-'}</td><td>${statusLabel(t.status)}</td>
     <td><button class="btn small danger" onclick="deleteRow('tasks','${t.id}')">حذف</button></td>
   </tr>`).join('');
 }
@@ -602,7 +603,7 @@ function renderTeam() {
   if (!members.length) html += `<div class="empty">هنوز عضوی ثبت نشده</div>`;
   else {
     html += `<table><thead><tr><th>نام</th><th>واحد</th><th>سطح دسترسی</th><th></th></tr></thead><tbody>`;
-    members.forEach(m => html += `<tr><td>${escapeHtml(m.name)}</td><td>${escapeHtml(m.department||'')}</td><td>${escapeHtml(m.access_level||'')}</td>
+    members.forEach(m => html += `<tr><td ${editableAttrs('members',m.id,'name')}>${escapeHtml(m.name)}</td><td>${escapeHtml(m.department||'')}</td><td>${escapeHtml(m.access_level||'')}</td>
       <td><button class="btn small danger" onclick="deleteRow('members','${m.id}')">حذف</button></td></tr>`);
     html += `</tbody></table>`;
   }
@@ -640,8 +641,8 @@ function renderErpTasks() {
       const idx = TASK_STATUSES.indexOf(t.status) + 1;
       const next = idx < TASK_STATUSES.length ? TASK_STATUSES[idx] : null;
       html += `<div class="lead-card">
-        <div class="name">${escapeHtml(t.title)}</div>
-        <div class="meta">${t.responsible_member_name?escapeHtml(t.responsible_member_name):'بدون مسئول'} · اولویت ${escapeHtml(t.priority||'')} ${t.due_date?'· '+t.due_date:''}</div>
+        <div class="name" ${editableAttrs('erp_tasks',t.id,'title')}>${escapeHtml(t.title)}</div>
+        <div class="meta"><span ${editableAttrs('erp_tasks',t.id,'responsible_member_name')}>${t.responsible_member_name?escapeHtml(t.responsible_member_name):'بدون مسئول'}</span> · اولویت ${escapeHtml(t.priority||'')} ${t.due_date?'· '+t.due_date:''}</div>
         <div class="meta" style="margin-bottom:6px;">${t.requires_founder_approval?'<span class="tag">نیازمند تأیید مؤسس</span>':'<span class="tag">مستقل</span>'}</div>
         <div class="actions">
           ${next?`<button class="btn small secondary" onclick="updateErpTask('${t.id}','status','${next}')">→ ${next}</button>`:''}
@@ -688,7 +689,7 @@ function renderFixedCosts() {
   else {
     html += `<table><thead><tr><th>عنوان</th><th>مبلغ ماهانه</th><th>سررسید</th><th>وضعیت</th><th></th></tr></thead><tbody>`;
     fixedCosts.forEach(c => { const paid = c.payment_status === 'پرداخت‌شده';
-      html += `<tr><td>${escapeHtml(c.title)}</td><td>${(c.monthly_amount||0).toLocaleString('fa-IR')}</td><td>روز ${c.due_day||1}</td>
+      html += `<tr><td ${editableAttrs('fixed_costs',c.id,'title')}>${escapeHtml(c.title)}</td><td ${editableAttrs('fixed_costs',c.id,'monthly_amount','number')}>${(c.monthly_amount||0)}</td><td ${editableAttrs('fixed_costs',c.id,'due_day','number')}>${c.due_day||1}</td>
       <td class="score ${paid?'high':'low'}">${c.payment_status}</td>
       <td><button class="btn small secondary" onclick="toggleCostPaid('${c.id}',${paid})">${paid?'پرداخت‌نشده کن':'پرداخت‌شده کن'}</button></td></tr>`;
     });
@@ -733,7 +734,7 @@ function renderTenders() {
   if (!tenders.length) { html += `<div class="card"><div class="empty">هنوز مناقصه/مسابقه‌ای ثبت نشده</div></div>`; return html; }
   html += `<div class="card"><table><thead><tr><th>عنوان</th><th>نوع</th><th>برگزارکننده</th><th>دسته</th><th>تاریخ</th><th>وضعیت</th></tr></thead><tbody>`;
   tenders.forEach(t => {
-    html += `<tr><td>${escapeHtml(t.title)}</td><td>${escapeHtml(t.type||'')}</td><td>${escapeHtml(t.issuing_body||'')}</td>
+    html += `<tr><td ${editableAttrs('tenders',t.id,'title')}>${escapeHtml(t.title)}</td><td>${escapeHtml(t.type||'')}</td><td ${editableAttrs('tenders',t.id,'issuing_body')}>${escapeHtml(t.issuing_body||'')}</td>
       <td>${t.specialty_category?`<span class="tag">${t.specialty_category}</span>`:''}</td><td>${t.event_date||'—'}</td>
       <td><select onchange="updateTenderStatus('${t.id}',this.value)" style="width:auto;">${TENDER_STATUSES.map(s=>`<option ${s===t.status?'selected':''}>${s}</option>`).join('')}</select></td></tr>`;
   });
@@ -754,5 +755,15 @@ async function updateTenderStatus(id, status) { await sb.from('tenders').update(
 
 // ================= عمومی =================
 async function deleteRow(table, id) { await sb.from(table).delete().eq('id', id); refreshAllErpData(); }
+
+async function saveEdit(el) {
+  const table = el.dataset.table, id = el.dataset.id, field = el.dataset.field, type = el.dataset.type;
+  let value = el.innerText.trim();
+  if (type === 'number') value = parseFloat(value) || 0;
+  await sb.from(table).update({ [field]: value }).eq('id', id);
+}
+function editableAttrs(table, id, field, type) {
+  return `contenteditable="true" data-table="${table}" data-id="${id}" data-field="${field}" ${type?`data-type="${type}"`:''} onblur="saveEdit(this)" onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}"`;
+}
 
 checkSession();

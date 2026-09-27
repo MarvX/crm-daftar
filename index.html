@@ -64,6 +64,9 @@
   .error-msg { color: #dc2626; font-size: 13px; margin-top: 8px; }
   .counter { font-size: 40px; font-weight: bold; text-align: center; margin: 20px 0; color: var(--navy-light); }
   .user-badge { font-size: 12px; opacity: 0.85; }
+  [contenteditable="true"] { outline: none; border-bottom: 1px dashed var(--muted); cursor: text; }
+  [contenteditable="true"]:hover, [contenteditable="true"]:focus { border-bottom: 1px dashed var(--navy-light); background: rgba(52,45,115,0.05); }
+  .edit-hint { font-size: 11px; color: var(--muted); margin-bottom: 10px; }
 </style>
 </head>
 <body>
