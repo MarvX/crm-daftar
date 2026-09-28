@@ -1,3 +1,335 @@
+/* ===== تبدیل تاریخ شمسی/میلادی — jalaali-js (MIT, © Behrang Noruzi Niya) ===== */
+const JalaaliLib = (function () {
+//#region src/index.ts
+/**
+* Jalaali years that begin a new 33-year leap cycle. Used by the
+* Borkowski algorithm to locate the correct cycle for any given year.
+*/
+const BREAKS = [
+	-61,
+	9,
+	38,
+	199,
+	426,
+	686,
+	756,
+	818,
+	1111,
+	1181,
+	1210,
+	1635,
+	2060,
+	2097,
+	2192,
+	2262,
+	2324,
+	2394,
+	2456,
+	3178
+];
+/** Minimum supported Jalaali year (inclusive). */
+const MIN_JALAALI_YEAR = BREAKS[0];
+/** Maximum supported Jalaali year (inclusive). */
+const MAX_JALAALI_YEAR = BREAKS[BREAKS.length - 1] - 1;
+function toJalaali(gyOrDate, gm, gd) {
+	if (gyOrDate instanceof Date) return d2j(g2d(gyOrDate.getFullYear(), gyOrDate.getMonth() + 1, gyOrDate.getDate()));
+	return d2j(g2d(gyOrDate, gm, gd));
+}
+/**
+* Converts a Jalaali date to Gregorian.
+*
+* @example
+* toGregorian(1395, 1, 23) // { gy: 2016, gm: 4, gd: 11 }
+*
+* @throws {RangeError} if `jy` falls outside `[-61, 3177]`.
+*/
+function toGregorian(jy, jm, jd) {
+	return d2g(j2d(jy, jm, jd));
+}
+/**
+* Returns `true` if `(jy, jm, jd)` is a real date in the Jalaali calendar.
+*
+* The check is **lenient** — non-integer inputs that happen to fall inside
+* the allowed numeric ranges are accepted. Pass integers in production code.
+*
+* @example
+* isValidJalaaliDate(1394, 12, 30) // false (1394 is a common year)
+* isValidJalaaliDate(1395, 12, 30) // true  (1395 is leap)
+*/
+function isValidJalaaliDate(jy, jm, jd) {
+	return jy >= MIN_JALAALI_YEAR && jy <= MAX_JALAALI_YEAR && jm >= 1 && jm <= 12 && jd >= 1 && jd <= jalaaliMonthLength(jy, jm);
+}
+/**
+* Returns `true` if the given Jalaali year is leap (366 days).
+*
+* @example
+* isLeapJalaaliYear(1394) // false
+* isLeapJalaaliYear(1395) // true
+*
+* @throws {RangeError} if `jy` falls outside `[-61, 3177]`.
+*/
+function isLeapJalaaliYear(jy) {
+	return jalCalLeap(jy) === 0;
+}
+/**
+* Returns the number of days in the given Jalaali month.
+*
+* The function trusts its inputs: `jm` is not range-checked, and an
+* out-of-range `jm` will return whichever branch happens to match.
+* For input validation, use {@link isValidJalaaliDate} instead.
+*
+* @example
+* jalaaliMonthLength(1394, 12) // 29 (common year)
+* jalaaliMonthLength(1395, 12) // 30 (leap year)
+*/
+function jalaaliMonthLength(jy, jm) {
+	if (jm <= 6) return 31;
+	if (jm <= 11) return 30;
+	return isLeapJalaaliYear(jy) ? 30 : 29;
+}
+/**
+* Computes the leap-cycle state of a Jalaali year and the Gregorian date
+* of Farvardin 1 in that year.
+*
+* Use this directly when you need the leap field; if you only need
+* `{ gy, march }`, prefer {@link jalCalShort}.
+*
+* @example
+* jalCal(1391) // { leap: 0, gy: 2012, march: 20 }
+* jalCal(1395) // { leap: 0, gy: 2016, march: 20 }
+*
+* @throws {RangeError} if `jy` falls outside `[-61, 3177]`.
+*/
+function jalCal(jy) {
+	const { gy, march, jump, n } = jalCalCore(jy);
+	return {
+		leap: leapFromCycle(jump, n),
+		gy,
+		march
+	};
+}
+/**
+* Like {@link jalCal} but omits the leap-cycle computation.
+*
+* @remarks
+* Equivalent to v1's `jalCal(jy, true)` — extracted to its own export
+* in v2 to give it a proper return type. Prefer this when the leap field
+* isn't needed; it avoids a small amount of work per call.
+*
+* @example
+* jalCalShort(1391) // { gy: 2012, march: 20 }
+*
+* @throws {RangeError} if `jy` falls outside `[-61, 3177]`.
+*/
+function jalCalShort(jy) {
+	const { gy, march } = jalCalCore(jy);
+	return {
+		gy,
+		march
+	};
+}
+/**
+* Converts a Jalaali date to a Julian Day number.
+*
+* The result is an integer corresponding to noon UT on the given calendar
+* day. Inputs are not range-checked — pass valid dates.
+*
+* @example
+* j2d(1395, 1, 23) // 2457490
+*/
+function j2d(jy, jm, jd) {
+	const r = jalCalShort(jy);
+	return g2d(r.gy, 3, r.march) + (jm - 1) * 31 - div(jm, 7) * (jm - 7) + jd - 1;
+}
+const FIRST_JALAALI_JDN = j2d(MIN_JALAALI_YEAR, 1, 1);
+const LAST_JALAALI_JDN = j2d(MAX_JALAALI_YEAR, 12, jalaaliMonthLength(MAX_JALAALI_YEAR, 12));
+/**
+* Converts a Julian Day number to a Jalaali date.
+*
+* @example
+* d2j(2457490) // { jy: 1395, jm: 1, jd: 23 }
+*
+* @throws {RangeError} if `jdn` falls outside the supported Jalaali range
+*   `[-61, 3177]`.
+*/
+function d2j(jdn) {
+	if (jdn < FIRST_JALAALI_JDN || jdn > LAST_JALAALI_JDN) throw new RangeError(`Invalid Julian Day number ${jdn}: outside the supported Jalaali range [${MIN_JALAALI_YEAR}, ${MAX_JALAALI_YEAR}]`);
+	const gy = d2g(jdn).gy;
+	let jy = Math.min(gy - 621, MAX_JALAALI_YEAR);
+	const r = jalCal(jy);
+	let k = jdn - g2d(r.gy, 3, r.march);
+	if (k >= 0) {
+		if (k <= 185) return {
+			jy,
+			jm: 1 + div(k, 31),
+			jd: mod(k, 31) + 1
+		};
+		k -= 186;
+	} else {
+		jy -= 1;
+		k += 179;
+		if (r.leap === 1) k += 1;
+	}
+	return {
+		jy,
+		jm: 7 + div(k, 30),
+		jd: mod(k, 30) + 1
+	};
+}
+/**
+* Converts a Gregorian date to a Julian Day number.
+*
+* Tested correct from 1 March, -100100 (of both calendars) through several
+* million years into the future.
+*
+* @example
+* g2d(2016, 4, 11) // 2457490
+*/
+function g2d(gy, gm, gd) {
+	let d = div((gy + div(gm - 8, 6) + 100100) * 1461, 4) + div(153 * mod(gm + 9, 12) + 2, 5) + gd - 34840408;
+	d = d - div(div(gy + 100100 + div(gm - 8, 6), 100) * 3, 4) + 752;
+	return d;
+}
+/**
+* Converts a Julian Day number to a Gregorian date.
+*
+* Valid for `jdn ≥ -34839655` (year -100100 of both calendars).
+*
+* @example
+* d2g(2457490) // { gy: 2016, gm: 4, gd: 11 }
+*/
+function d2g(jdn) {
+	let j = 4 * jdn + 139361631;
+	j = j + div(div(4 * jdn + 183187720, 146097) * 3, 4) * 4 - 3908;
+	const i = div(mod(j, 1461), 4) * 5 + 308;
+	const gd = div(mod(i, 153), 5) + 1;
+	const gm = mod(div(i, 153), 12) + 1;
+	return {
+		gy: div(j, 1461) - 100100 + div(8 - gm, 6),
+		gm,
+		gd
+	};
+}
+/**
+* Converts a Jalaali date (optionally with a time of day) to a JavaScript
+* `Date` constructed in the local time zone.
+*
+* Time components default to `0`. Out-of-range time components are *not*
+* clamped — they overflow the way the `Date` constructor handles them
+* (e.g. `h = 25` rolls into the next day).
+*
+* @example
+* jalaaliToDateObject(1400, 4, 30)
+*   // → new Date(2021, 6, 21, 0, 0, 0, 0)
+*
+* jalaaliToDateObject(1400, 4, 30, 14, 30)
+*   // → new Date(2021, 6, 21, 14, 30)
+*/
+function jalaaliToDateObject(jy, jm, jd, h = 0, m = 0, s = 0, ms = 0) {
+	const g = toGregorian(jy, jm, jd);
+	return new Date(g.gy, g.gm - 1, g.gd, h, m, s, ms);
+}
+/**
+* Returns the Saturday and Friday bounding the Jalaali week that contains
+* the given date. The Jalaali week starts on **Saturday**.
+*
+* @example
+* jalaaliWeek(1400, 4, 30)
+*   // → { saturday: { jy: 1400, jm: 4, jd: 26 },
+*   //     friday:   { jy: 1400, jm: 5, jd:  1 } }
+*
+* @remarks
+* Uses {@link jalaaliToDateObject} to read the day-of-week, which reflects
+* the host's local time zone. For dates near a DST boundary the underlying
+* `Date.getDay()` is still correct because the conversion is done in local
+* time on both sides.
+*/
+function jalaaliWeek(jy, jm, jd) {
+	const dayOfWeek = jalaaliToDateObject(jy, jm, jd).getDay();
+	const startDayDifference = dayOfWeek === 6 ? 0 : -(dayOfWeek + 1);
+	const endDayDifference = 6 + startDayDifference;
+	return {
+		saturday: d2j(j2d(jy, jm, jd + startDayDifference)),
+		friday: d2j(j2d(jy, jm, jd + endDayDifference))
+	};
+}
+/**
+* Core of the Borkowski algorithm: locate the Jalaali year inside the
+* cycle table and compute Farvardin 1's Gregorian date.
+*/
+function jalCalCore(jy) {
+	if (!Number.isFinite(jy) || jy < MIN_JALAALI_YEAR || jy > MAX_JALAALI_YEAR) throw new RangeError(`Invalid Jalaali year ${jy}: must be a finite number between ${MIN_JALAALI_YEAR} and ${MAX_JALAALI_YEAR} (inclusive)`);
+	const gy = jy + 621;
+	let leapJ = -14;
+	let jp = BREAKS[0];
+	let jm = 0;
+	let jump = 0;
+	for (let i = 1; i < BREAKS.length; i += 1) {
+		jm = BREAKS[i];
+		jump = jm - jp;
+		if (jy < jm) break;
+		leapJ = leapJ + div(jump, 33) * 8 + div(mod(jump, 33), 4);
+		jp = jm;
+	}
+	const n = jy - jp;
+	leapJ = leapJ + div(n, 33) * 8 + div(mod(n, 33) + 3, 4);
+	if (mod(jump, 33) === 4 && jump - n === 4) leapJ += 1;
+	const leapG = div(gy, 4) - div((div(gy, 100) + 1) * 3, 4) - 150;
+	return {
+		gy,
+		march: 20 + leapJ - leapG,
+		jump,
+		n
+	};
+}
+/**
+* Given a 33-year cycle length `jump` and the year offset `n` within that
+* cycle, returns the number of years since the last leap year (`0 … 4`).
+* `0` means the current year is leap.
+*/
+function leapFromCycle(jump, n) {
+	let adjusted = n;
+	if (jump - n < 6) adjusted = n - jump + div(jump + 4, 33) * 33;
+	let leap = mod(mod(adjusted + 1, 33) - 1, 4);
+	if (leap === -1) leap = 4;
+	return leap;
+}
+/**
+* Leap-only variant — same loop as {@link jalCalCore} without computing
+* the Gregorian fields. Kept separate to avoid the per-call object
+* allocation on the hot `isLeapJalaaliYear` path.
+*/
+function jalCalLeap(jy) {
+	if (!Number.isFinite(jy) || jy < MIN_JALAALI_YEAR || jy > MAX_JALAALI_YEAR) throw new RangeError(`Invalid Jalaali year ${jy}: must be a finite number between ${MIN_JALAALI_YEAR} and ${MAX_JALAALI_YEAR} (inclusive)`);
+	let jp = BREAKS[0];
+	let jm = 0;
+	let jump = 0;
+	for (let i = 1; i < BREAKS.length; i += 1) {
+		jm = BREAKS[i];
+		jump = jm - jp;
+		if (jy < jm) break;
+		jp = jm;
+	}
+	return leapFromCycle(jump, jy - jp);
+}
+/**
+* Integer division — `Math.trunc(a / b)` equivalent that's faster on V8
+* for values that fit in 32 bits. Used pervasively inside the algorithm.
+*/
+function div(a, b) {
+	return ~~(a / b);
+}
+/**
+* Mathematical modulo — like `%` but always returns a non-negative result
+* when `b` is positive (matches Python's `%` semantics, not JavaScript's).
+*/
+function mod(a, b) {
+	return a - ~~(a / b) * b;
+}
+//#endregion
+return { toJalaali, toGregorian, isValidJalaaliDate, jalaaliMonthLength };
+})();
+
 const SUPABASE_URL = "https://ooeedxwyjpcgurxeutdb.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9vZWVkeHd5anBjZ3VyeGV1dGRiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAwNzM4NTEsImV4cCI6MjEwNTY0OTg1MX0.ZbDel9uPG0sSsdzWRbgvrH_inLA7IafmprYTpqhTPXQ";
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -21,6 +353,49 @@ let allProfiles = [];
 
 let leads = [], clients = [], projects = [], contracts = [], contractStagesMap = {},
     members = [], erpTasks = [], fixedCosts = [], tenders = [], interactions = [];
+
+
+function toFaDigits(str) { return String(str).replace(/\d/g, d => '۰۱۲۳۴۵۶۷۸۹'[d]); }
+
+// نمایش تاریخ: از میلادی (ذخیره‌شده در دیتابیس) به شمسی
+function fmtDate(iso) {
+  if (!iso) return '';
+  const m = String(iso).match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (!m) return String(iso);
+  const j = JalaaliLib.toJalaali(+m[1], +m[2], +m[3]);
+  return toFaDigits(`${j.jy}/${String(j.jm).padStart(2, '0')}/${String(j.jd).padStart(2, '0')}`);
+}
+
+// انتخاب تاریخ شمسی با سه کشویی (سال / ماه / روز)
+function jalaliDateField(id, iso) {
+  const now = new Date();
+  const cur = JalaaliLib.toJalaali(now.getFullYear(), now.getMonth() + 1, now.getDate());
+  const m = iso ? String(iso).match(/^(\d{4})-(\d{2})-(\d{2})/) : null;
+  const sel = m ? JalaaliLib.toJalaali(+m[1], +m[2], +m[3]) : null;
+  let y0 = cur.jy - 2, y1 = cur.jy + 5;
+  if (sel) { y0 = Math.min(y0, sel.jy); y1 = Math.max(y1, sel.jy); }
+  let years = '<option value="">سال</option>';
+  for (let y = y0; y <= y1; y++) years += `<option value="${y}" ${sel && sel.jy === y ? 'selected' : ''}>${toFaDigits(y)}</option>`;
+  const months = '<option value="">ماه</option>' + JALALI_MONTHS.map((n, i) => `<option value="${i + 1}" ${sel && sel.jm === i + 1 ? 'selected' : ''}>${n}</option>`).join('');
+  let days = '<option value="">روز</option>';
+  for (let d = 1; d <= 31; d++) days += `<option value="${d}" ${sel && sel.jd === d ? 'selected' : ''}>${toFaDigits(d)}</option>`;
+  return `<span class="jdate" id="${id}"><select>${years}</select><select>${months}</select><select>${days}</select></span>`;
+}
+// خواندن تاریخ انتخاب‌شده: خروجی میلادی «YYYY-MM-DD» یا null اگر کامل انتخاب نشده
+function getJalaliDate(id) {
+  const box = document.getElementById(id); if (!box) return null;
+  const [ys, ms, ds] = box.querySelectorAll('select');
+  const jy = parseInt(ys.value), jm = parseInt(ms.value);
+  let jd = parseInt(ds.value);
+  if (!jy || !jm || !jd) return null;
+  jd = Math.min(jd, JalaaliLib.jalaaliMonthLength(jy, jm));
+  const g = JalaaliLib.toGregorian(jy, jm, jd);
+  return `${g.gy}-${String(g.gm).padStart(2, '0')}-${String(g.gd).padStart(2, '0')}`;
+}
+function clearJalaliDate(id) {
+  const box = document.getElementById(id);
+  if (box) box.querySelectorAll('select').forEach(x => { x.value = ''; });
+}
 
 function escapeHtml(str) {
   if (!str) return '';
@@ -224,11 +599,11 @@ async function loadAttendanceAll() {
 }
 const JALALI_MONTHS = ['فروردین','اردیبهشت','خرداد','تیر','مرداد','شهریور','مهر','آبان','آذر','دی','بهمن','اسفند'];
 function fillJalaliSelectors() {
-  const nowYear = new Date().getFullYear(); const baseJY = nowYear - 621;
+  const now = new Date(); const cur = JalaaliLib.toJalaali(now.getFullYear(), now.getMonth() + 1, now.getDate()); const baseJY = cur.jy;
   const yearSel = document.getElementById('export-jy'), monthSel = document.getElementById('export-jm');
   if (!yearSel) return;
   yearSel.innerHTML = ''; for (let y=baseJY-1; y<=baseJY+1; y++) yearSel.innerHTML += `<option value="${y}" ${y===baseJY?'selected':''}>${y}</option>`;
-  monthSel.innerHTML = JALALI_MONTHS.map((m,i) => `<option value="${i+1}">${m}</option>`).join('');
+  monthSel.innerHTML = JALALI_MONTHS.map((m,i) => `<option value="${i+1}" ${i+1===cur.jm?'selected':''}>${m}</option>`).join('');
 }
 function exportTimesheet() {
   const jy = document.getElementById('export-jy').value, jm = document.getElementById('export-jm').value;
@@ -245,7 +620,7 @@ function renderTasksSection() {
       <div class="row">
         <select id="team-task-employee"></select>
         <input type="text" id="team-task-title" placeholder="عنوان کار">
-        <input type="date" id="team-task-date">
+        ${jalaliDateField('team-task-date')}
         <button class="btn" onclick="addTeamTask()">محول کردن کار</button>
       </div>
       <table><thead><tr><th>کارمند</th><th>عنوان</th><th>تاریخ</th><th>وضعیت</th><th></th></tr></thead><tbody id="teamtasks-table"></tbody></table>
@@ -255,7 +630,7 @@ function renderTasksSection() {
       <div class="row-top"><h2>کارهای من</h2></div>
       <div class="row">
         <input type="text" id="mytask-title" placeholder="عنوان کار">
-        <input type="date" id="mytask-date">
+        ${jalaliDateField('mytask-date')}
         <button class="btn" onclick="addMyTask()">افزودن</button>
       </div>
       <table><thead><tr><th>عنوان</th><th>تاریخ</th><th>وضعیت</th><th></th></tr></thead><tbody id="mytasks-table"></tbody></table>
@@ -267,10 +642,10 @@ function renderTasksSection() {
 }
 async function addMyTask() {
   const title = document.getElementById('mytask-title').value.trim();
-  const due_date = document.getElementById('mytask-date').value;
+  const due_date = getJalaliDate('mytask-date');
   if (!title) return;
   await sb.from('personal_tasks').insert([{ user_id: currentUser.id, title, due_date, status: 'new' }]);
-  document.getElementById('mytask-title').value=''; document.getElementById('mytask-date').value='';
+  document.getElementById('mytask-title').value=''; clearJalaliDate('mytask-date');
   loadMyTasks();
 }
 async function loadMyTasks() {
@@ -278,7 +653,7 @@ async function loadMyTasks() {
   const tbody = document.getElementById('mytasks-table'); if (!tbody) return;
   cacheRows('personal_tasks', data||[]);
   tbody.innerHTML = (data||[]).map(t => `<tr>
-    <td>${escapeHtml(t.title)}</td><td>${t.due_date||''}</td><td>${statusLabel(t.status)}</td>
+    <td>${escapeHtml(t.title)}</td><td>${fmtDate(t.due_date)}</td><td>${statusLabel(t.status)}</td>
     <td><button class="btn small secondary" onclick="editRow('personal_tasks','${t.id}')">ویرایش</button> ${t.status!=='done'?`<button class="btn small" onclick="completeMyTask('${t.id}')">انجام شد</button>`:''} <button class="btn small danger" onclick="deleteMyTask('${t.id}')">حذف</button></td>
   </tr>`).join('');
 }
@@ -291,10 +666,10 @@ function fillEmployeeSelect() {
 async function addTeamTask() {
   const user_id = document.getElementById('team-task-employee').value;
   const title = document.getElementById('team-task-title').value.trim();
-  const due_date = document.getElementById('team-task-date').value;
+  const due_date = getJalaliDate('team-task-date');
   if (!title || !user_id) return;
   await sb.from('personal_tasks').insert([{ user_id, title, due_date, status:'new' }]);
-  document.getElementById('team-task-title').value=''; document.getElementById('team-task-date').value='';
+  document.getElementById('team-task-title').value=''; clearJalaliDate('team-task-date');
   loadTeamTasks();
 }
 async function loadTeamTasks() {
@@ -302,7 +677,7 @@ async function loadTeamTasks() {
   const tbody = document.getElementById('teamtasks-table'); if (!tbody) return;
   cacheRows('personal_tasks', data||[]);
   tbody.innerHTML = (data||[]).map(t => `<tr>
-    <td>${t.profiles?t.profiles.full_name:'—'}</td><td>${escapeHtml(t.title)}</td><td>${t.due_date||''}</td><td>${statusLabel(t.status)}</td>
+    <td>${t.profiles?t.profiles.full_name:'—'}</td><td>${escapeHtml(t.title)}</td><td>${fmtDate(t.due_date)}</td><td>${statusLabel(t.status)}</td>
     <td><button class="btn small secondary" onclick="editRow('personal_tasks','${t.id}')">ویرایش</button> <button class="btn small danger" onclick="deleteTeamTask('${t.id}')">حذف</button></td>
   </tr>`).join('');
 }
@@ -346,7 +721,7 @@ function renderDashboard() {
       <h2>پیگیری‌های نزدیک</h2>
       ${upcoming.length ? upcoming.map(i => `<div style="border-bottom:1px solid var(--border);padding:10px 0;font-size:13px;">
         <strong>${escapeHtml(i.related_name||'')}</strong> — ${escapeHtml(i.type)}
-        <div style="color:var(--muted);font-size:11px;">${escapeHtml(i.note||'')} ${i.next_follow_up_date===todayStr?'· امروز':'· '+i.next_follow_up_date}</div>
+        <div style="color:var(--muted);font-size:11px;">${escapeHtml(i.note||'')} ${i.next_follow_up_date===todayStr?'· امروز':'· '+fmtDate(i.next_follow_up_date)}</div>
       </div>`).join('') : '<div class="empty">پیگیری‌ای ثبت نشده</div>'}
     </div>
   `;
@@ -528,12 +903,12 @@ function renderContracts() {
       <div class="row">
         <input type="text" placeholder="عنوان مرحله" id="stage-title-${c.id}">
         <input type="number" placeholder="مبلغ" id="stage-amount-${c.id}">
-        <input type="date" id="stage-date-${c.id}">
+        ${jalaliDateField('stage-date-' + c.id)}
         <button class="btn small" onclick="addStage('${c.id}')">+ مرحله</button>
       </div>
       <table><thead><tr><th>مرحله</th><th>مبلغ</th><th>سررسید</th><th>وضعیت</th><th></th></tr></thead><tbody>
         ${stages.map(s => { const eff = stageEffectiveStatus(s); const cls = eff==='وصول‌شده'?'high':eff==='سررسید گذشته'?'low':'mid';
-          return `<tr><td>${escapeHtml(s.title)}</td><td>${(s.amount||0).toLocaleString('fa-IR')}</td><td>${s.due_date||'—'}</td>
+          return `<tr><td>${escapeHtml(s.title)}</td><td>${(s.amount||0).toLocaleString('fa-IR')}</td><td>${fmtDate(s.due_date) || '—'}</td>
           <td class="score ${cls}">${eff}</td>
           <td><button class="btn small secondary" onclick="editRow('contract_stages','${s.id}')">ویرایش</button> ${eff!=='وصول‌شده'?`<button class="btn small secondary" onclick="markStageReceived('${s.id}')">وصول شد</button>`:''}</td></tr>`;
         }).join('')}
@@ -560,7 +935,7 @@ async function updateContractField(id, field, value) { await sb.from('contracts'
 async function addStage(contractId) {
   const title = document.getElementById(`stage-title-${contractId}`).value.trim();
   const amount = parseFloat(document.getElementById(`stage-amount-${contractId}`).value) || 0;
-  const due_date = document.getElementById(`stage-date-${contractId}`).value || null;
+  const due_date = getJalaliDate(`stage-date-${contractId}`);
   if (!title) return;
   await sb.from('contract_stages').insert([{ contract_id: contractId, title, amount, due_date }]);
   refreshAllErpData();
@@ -573,7 +948,7 @@ function renderOfficeTasks() {
     <div class="card">
       <div class="row">
         <input type="text" id="task-title" placeholder="عنوان کار">
-        <input type="date" id="task-date">
+        ${jalaliDateField('task-date')}
         <select id="task-client"><option value="">— انتخاب کارفرما —</option>${clients.map(c=>`<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('')}</select>
         <button class="btn" onclick="addOfficeTask()">افزودن کار</button>
       </div>
@@ -584,12 +959,12 @@ function renderOfficeTasks() {
 }
 async function addOfficeTask() {
   const title = document.getElementById('task-title').value.trim();
-  const date = document.getElementById('task-date').value;
+  const date = getJalaliDate('task-date');
   const client_id = document.getElementById('task-client').value || null;
   if (!title) return;
   await sb.from('tasks').insert([{ title, date, client_id, status: 'new' }]);
   if (date) fetch('/api/create-event', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ title, date }) }).catch(()=>{});
-  document.getElementById('task-title').value=''; document.getElementById('task-date').value='';
+  document.getElementById('task-title').value=''; clearJalaliDate('task-date');
   loadOfficeTasks();
 }
 async function loadOfficeTasks() {
@@ -597,7 +972,7 @@ async function loadOfficeTasks() {
   const tbody = document.getElementById('tasks-table'); if (!tbody) return;
   cacheRows('tasks', data||[]);
   tbody.innerHTML = (data||[]).map(t => `<tr>
-    <td>${escapeHtml(t.title)}</td><td>${t.date||''}</td><td>${t.clients?t.clients.name:'-'}</td><td>${statusLabel(t.status)}</td>
+    <td>${escapeHtml(t.title)}</td><td>${fmtDate(t.date)}</td><td>${t.clients?t.clients.name:'-'}</td><td>${statusLabel(t.status)}</td>
     <td><button class="btn small secondary" onclick="editRow('tasks','${t.id}')">ویرایش</button> <button class="btn small danger" onclick="deleteRow('tasks','${t.id}')">حذف</button></td>
   </tr>`).join('');
 }
@@ -641,7 +1016,7 @@ function renderErpTasks() {
         <input type="text" id="erptask-title" placeholder="عنوان وظیفه">
         <input type="text" id="erptask-responsible" placeholder="مسئول">
         <select id="erptask-priority">${TASK_PRIORITIES.map(p=>`<option>${p}</option>`).join('')}</select>
-        <input type="date" id="erptask-date">
+        ${jalaliDateField('erptask-date')}
         <label style="display:flex;align-items:center;gap:4px;font-size:12px;"><input type="checkbox" id="erptask-approval" checked style="width:auto;"> نیازمند تأیید مؤسس</label>
         <button class="btn" onclick="addErpTask()">+ وظیفه جدید</button>
       </div>
@@ -656,7 +1031,7 @@ function renderErpTasks() {
       const next = idx < TASK_STATUSES.length ? TASK_STATUSES[idx] : null;
       html += `<div class="lead-card">
         <div class="name">${escapeHtml(t.title)}</div>
-        <div class="meta">${t.responsible_member_name?escapeHtml(t.responsible_member_name):'بدون مسئول'} · اولویت ${escapeHtml(t.priority||'')} ${t.due_date?'· '+t.due_date:''}</div>
+        <div class="meta">${t.responsible_member_name?escapeHtml(t.responsible_member_name):'بدون مسئول'} · اولویت ${escapeHtml(t.priority||'')} ${t.due_date?'· '+fmtDate(t.due_date):''}</div>
         <div class="meta" style="margin-bottom:6px;">${t.requires_founder_approval?'<span class="tag">نیازمند تأیید مؤسس</span>':'<span class="tag">مستقل</span>'}</div>
         <div class="actions">
           ${next?`<button class="btn small secondary" onclick="updateErpTask('${t.id}','status','${next}')">→ ${next}</button>`:''}
@@ -675,7 +1050,7 @@ async function addErpTask() {
   const title = document.getElementById('erptask-title').value.trim();
   const responsible_member_name = document.getElementById('erptask-responsible').value.trim();
   const priority = document.getElementById('erptask-priority').value;
-  const due_date = document.getElementById('erptask-date').value || null;
+  const due_date = getJalaliDate('erptask-date');
   const requires_founder_approval = document.getElementById('erptask-approval').checked;
   if (!title) return;
   await sb.from('erp_tasks').insert([{ title, responsible_member_name, priority, due_date, requires_founder_approval, status: TASK_STATUSES[0] }]);
@@ -742,7 +1117,7 @@ function renderTenders() {
         <select id="tender-type">${TENDER_TYPES.map(t=>`<option>${t}</option>`).join('')}</select>
         <input type="text" id="tender-issuer" placeholder="برگزارکننده">
         <select id="tender-specialty"><option value="">دسته</option>${SPECIALTIES.map(s=>`<option>${s}</option>`).join('')}</select>
-        <input type="date" id="tender-date">
+        ${jalaliDateField('tender-date')}
         <button class="btn" onclick="addTender()">+ جدید</button>
       </div>
     </div>`;
@@ -750,7 +1125,7 @@ function renderTenders() {
   html += `<div class="card"><table><thead><tr><th>عنوان</th><th>نوع</th><th>برگزارکننده</th><th>دسته</th><th>تاریخ</th><th>وضعیت</th><th></th></tr></thead><tbody>`;
   tenders.forEach(t => {
     html += `<tr><td>${escapeHtml(t.title)}</td><td>${escapeHtml(t.type||'')}</td><td>${escapeHtml(t.issuing_body||'')}</td>
-      <td>${t.specialty_category?`<span class="tag">${t.specialty_category}</span>`:''}</td><td>${t.event_date||'—'}</td>
+      <td>${t.specialty_category?`<span class="tag">${t.specialty_category}</span>`:''}</td><td>${fmtDate(t.event_date) || '—'}</td>
       <td><select onchange="updateTenderStatus('${t.id}',this.value)" style="width:auto;">${TENDER_STATUSES.map(s=>`<option ${s===t.status?'selected':''}>${s}</option>`).join('')}</select></td>
       <td><button class="btn small secondary" onclick="editRow('tenders','${t.id}')">ویرایش</button> <button class="btn small danger" onclick="deleteRow('tenders','${t.id}')">حذف</button></td></tr>`;
   });
@@ -762,7 +1137,7 @@ async function addTender() {
   const type = document.getElementById('tender-type').value;
   const issuing_body = document.getElementById('tender-issuer').value.trim();
   const specialty_category = document.getElementById('tender-specialty').value;
-  const event_date = document.getElementById('tender-date').value || null;
+  const event_date = getJalaliDate('tender-date');
   if (!title) return;
   await sb.from('tenders').insert([{ title, type, issuing_body, specialty_category, event_date }]);
   refreshAllErpData();
@@ -848,6 +1223,7 @@ function openEditModal(table, id, title, fields, values) {
             const blank = String(cur) === '' ? '<option value="">—</option>' : '';
             return `<label>${f.label}</label><select id="edit-${f.key}">${blank}${f.options.map(o => `<option value="${o}" ${String(o) === String(cur) ? 'selected' : ''}>${o}</option>`).join('')}</select>`;
           }
+          if (f.type === 'date') return `<label>${f.label}</label>${jalaliDateField('edit-' + f.key, cur)}`;
           return `<label>${f.label}</label><input type="${f.type}" id="edit-${f.key}" value="${escapeHtml(cur)}">`;
         }).join('')}
         <div class="modal-actions">
@@ -864,10 +1240,10 @@ async function saveEditModal(table, id) {
   const fields = JSON.parse(root.dataset.fields);
   const payload = {};
   fields.forEach(f => {
+    if (f.type === 'date') { payload[f.key] = getJalaliDate('edit-' + f.key); return; }
     const el = document.getElementById('edit-' + f.key);
     let v = el.value;
     if (f.type === 'number') v = v === '' ? null : (parseFloat(v) || 0);
-    else if (f.type === 'date' && v === '') v = null;
     payload[f.key] = v;
   });
   const { error } = await sb.from(table).update(payload).eq('id', id);
