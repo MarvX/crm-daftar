@@ -408,6 +408,16 @@ function statusLabel(s) {
 }
 function scoreClass(n) { return n >= 4 ? 'high' : n >= 3 ? 'mid' : 'low'; }
 
+let sessionToken = null;
+async function authHeader() {
+  if (!sessionToken) { const { data } = await sb.auth.getSession(); sessionToken = data.session ? data.session.access_token : null; }
+  return { Authorization: 'Bearer ' + sessionToken };
+}
+async function apiPost(url, body) {
+  const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json', ...(await authHeader()) }, body: JSON.stringify(body || {}) });
+  return r.json().catch(() => ({}));
+}
+
 // ================= AUTH =================
 async function doLogin() {
   const username = document.getElementById('login-username').value.trim();
@@ -416,17 +426,19 @@ async function doLogin() {
   const { data, error } = await sb.auth.signInWithPassword({ email, password });
   if (error) { document.getElementById('login-error').innerText = "نام کاربری یا رمز عبور اشتباه است."; return; }
   currentUser = data.user;
+  sessionToken = data.session.access_token;
   await loadProfileAndShowApp();
 }
 async function doLogout() {
   await sb.auth.signOut();
+  sessionToken = null;
   clearInterval(attendanceTimer);
   document.getElementById('app-root').classList.add('hidden');
   document.getElementById('login-screen').classList.remove('hidden');
 }
 async function checkSession() {
   const { data } = await sb.auth.getSession();
-  if (data.session) { currentUser = data.session.user; await loadProfileAndShowApp(); }
+  if (data.session) { currentUser = data.session.user; sessionToken = data.session.access_token; await loadProfileAndShowApp(); }
 }
 
 const NAV_ITEMS = [
@@ -455,13 +467,44 @@ async function loadProfileAndShowApp() {
   switchSection('attendance');
   loadAttendanceStatus();
   loadMyTasks();
+  refreshGoogleStatus();
 
   if (currentProfile.is_admin) {
-    document.getElementById('calendar-btn').classList.remove('hidden');
     const { data: profs } = await sb.from('profiles').select('*');
     allProfiles = profs || [];
     refreshAllErpData();
   }
+}
+
+let googleStatus = null;
+async function refreshGoogleStatus() {
+  const r = await fetch('/api/google-status', { headers: await authHeader() });
+  googleStatus = await r.json().catch(() => null);
+  const btn = document.getElementById('calendar-btn');
+  if (!googleStatus || !btn) return;
+  btn.classList.remove('hidden');
+  if (googleStatus.me.needs_reconnect) btn.innerText = '⚠️ اتصال مجدد به گوگل کلندر';
+  else if (googleStatus.me.connected) btn.innerText = `متصل: ${googleStatus.me.email || 'گوگل کلندر'}`;
+  else btn.innerText = 'اتصال به گوگل کلندر';
+  if (currentProfile.is_admin && document.getElementById('teamtasks-table')) renderEmployeeCalendarBadges();
+}
+function renderEmployeeCalendarBadges() {
+  if (!googleStatus || !googleStatus.all) return;
+  ['team-task-employee', 'team-task-filter'].forEach(id => {
+    const sel = document.getElementById(id); if (!sel) return;
+    [...sel.options].forEach(opt => {
+      const st = googleStatus.all[opt.value];
+      const base = opt.textContent.replace(/ \((وصل نیست|نیاز به اتصال مجدد)\)$/, '');
+      if (st && st.needs_reconnect) opt.textContent = base + ' (نیاز به اتصال مجدد)';
+      else if (st && !st.connected) opt.textContent = base + ' (وصل نیست)';
+      else opt.textContent = base;
+    });
+  });
+}
+async function connectCalendar() {
+  const r = await apiPost('/api/auth/login');
+  if (r && r.url) window.location.href = r.url;
+  else alert('اتصال به گوگل ممکن نشد.');
 }
 
 function buildNav() {
@@ -623,6 +666,11 @@ function renderTasksSection() {
         ${jalaliDateField('team-task-date')}
         <button class="btn" onclick="addTeamTask()">محول کردن کار</button>
       </div>
+      <div class="row">
+        <label style="margin:0;">نمایش کارهای:</label>
+        <select id="team-task-filter" onchange="loadTeamTasks()"><option value="">— همه پرسنل —</option></select>
+      </div>
+      <div id="team-task-summary" style="margin-bottom:10px;font-size:13px;color:var(--muted);"></div>
       <table><thead><tr><th>کارمند</th><th>عنوان</th><th>تاریخ</th><th>وضعیت</th><th></th></tr></thead><tbody id="teamtasks-table"></tbody></table>
     </div>` : '';
   el.innerHTML = `
@@ -640,12 +688,27 @@ function renderTasksSection() {
   loadMyTasks();
   if (currentProfile.is_admin) { fillEmployeeSelect(); loadTeamTasks(); }
 }
+
+function taskActionButtons(t, onDelete) {
+  const next = { new: ['progress', 'شروع کار'], progress: ['done', 'انجام شد'] }[t.status];
+  return `${next ? `<button class="btn small" onclick="advanceTask('${t.id}','${next[0]}')">${next[1]}</button>` : ''}
+    ${t.status === 'done' ? `<button class="btn small secondary" onclick="advanceTask('${t.id}','new')">بازگشایی</button>` : ''}
+    <button class="btn small secondary" onclick="editRow('personal_tasks','${t.id}')">ویرایش</button>
+    <button class="btn small danger" onclick="${onDelete}">حذف</button>`;
+}
+async function advanceTask(id, status) {
+  await sb.from('personal_tasks').update({ status }).eq('id', id);
+  apiPost('/api/task-calendar', { task_id: id, action: 'sync' });
+  loadMyTasks(); if (currentProfile.is_admin) loadTeamTasks();
+}
+
 async function addMyTask() {
   const title = document.getElementById('mytask-title').value.trim();
   const due_date = getJalaliDate('mytask-date');
   if (!title) return;
-  await sb.from('personal_tasks').insert([{ user_id: currentUser.id, title, due_date, status: 'new' }]);
+  const { data, error } = await sb.from('personal_tasks').insert([{ user_id: currentUser.id, title, due_date, status: 'new' }]).select().single();
   document.getElementById('mytask-title').value=''; clearJalaliDate('mytask-date');
+  if (!error && data && due_date) apiPost('/api/task-calendar', { task_id: data.id, action: 'sync' });
   loadMyTasks();
 }
 async function loadMyTasks() {
@@ -654,34 +717,57 @@ async function loadMyTasks() {
   cacheRows('personal_tasks', data||[]);
   tbody.innerHTML = (data||[]).map(t => `<tr>
     <td>${escapeHtml(t.title)}</td><td>${fmtDate(t.due_date)}</td><td>${statusLabel(t.status)}</td>
-    <td><button class="btn small secondary" onclick="editRow('personal_tasks','${t.id}')">ویرایش</button> ${t.status!=='done'?`<button class="btn small" onclick="completeMyTask('${t.id}')">انجام شد</button>`:''} <button class="btn small danger" onclick="deleteMyTask('${t.id}')">حذف</button></td>
-  </tr>`).join('');
+    <td>${taskActionButtons(t, `deleteMyTask('${t.id}')`)}</td>
+  </tr>`).join('') || '<tr><td colspan="4" class="empty">کاری ثبت نشده</td></tr>';
 }
-async function completeMyTask(id) { await sb.from('personal_tasks').update({ status:'done' }).eq('id', id); loadMyTasks(); if (currentProfile.is_admin) loadTeamTasks(); }
-async function deleteMyTask(id) { await sb.from('personal_tasks').delete().eq('id', id); loadMyTasks(); if (currentProfile.is_admin) loadTeamTasks(); }
+async function deleteMyTask(id) {
+  await apiPost('/api/task-calendar', { task_id: id, action: 'remove' });
+  await sb.from('personal_tasks').delete().eq('id', id);
+  loadMyTasks(); if (currentProfile.is_admin) loadTeamTasks();
+}
+
 function fillEmployeeSelect() {
-  const sel = document.getElementById('team-task-employee'); if (!sel) return;
-  sel.innerHTML = allProfiles.map(p => `<option value="${p.id}">${p.full_name || p.id.slice(0,8)}</option>`).join('');
+  const opts = allProfiles.map(p => `<option value="${p.id}">${escapeHtml(p.full_name || p.id.slice(0,8))}</option>`).join('');
+  const sel = document.getElementById('team-task-employee'); if (sel) sel.innerHTML = opts;
+  const filt = document.getElementById('team-task-filter'); if (filt) filt.innerHTML = '<option value="">— همه پرسنل —</option>' + opts;
 }
 async function addTeamTask() {
   const user_id = document.getElementById('team-task-employee').value;
   const title = document.getElementById('team-task-title').value.trim();
   const due_date = getJalaliDate('team-task-date');
   if (!title || !user_id) return;
-  await sb.from('personal_tasks').insert([{ user_id, title, due_date, status:'new' }]);
+  const { data, error } = await sb.from('personal_tasks').insert([{ user_id, title, due_date, status: 'new', assigned_by: currentUser.id }]).select().single();
   document.getElementById('team-task-title').value=''; clearJalaliDate('team-task-date');
+  if (!error && data && due_date) apiPost('/api/task-calendar', { task_id: data.id, action: 'sync' });
   loadTeamTasks();
 }
 async function loadTeamTasks() {
-  const { data } = await sb.from('personal_tasks').select('*, profiles(full_name)').order('due_date', { ascending: true });
+  const filterId = document.getElementById('team-task-filter') ? document.getElementById('team-task-filter').value : '';
+  let q = sb.from('personal_tasks').select('*, profiles(full_name)').order('due_date', { ascending: true });
+  if (filterId) q = q.eq('user_id', filterId);
+  const { data } = await q;
+  const rows = data || [];
+  cacheRows('personal_tasks', rows);
   const tbody = document.getElementById('teamtasks-table'); if (!tbody) return;
-  cacheRows('personal_tasks', data||[]);
-  tbody.innerHTML = (data||[]).map(t => `<tr>
-    <td>${t.profiles?t.profiles.full_name:'—'}</td><td>${escapeHtml(t.title)}</td><td>${fmtDate(t.due_date)}</td><td>${statusLabel(t.status)}</td>
-    <td><button class="btn small secondary" onclick="editRow('personal_tasks','${t.id}')">ویرایش</button> <button class="btn small danger" onclick="deleteTeamTask('${t.id}')">حذف</button></td>
-  </tr>`).join('');
+  tbody.innerHTML = rows.map(t => `<tr>
+    <td>${t.profiles?escapeHtml(t.profiles.full_name):'—'}</td><td>${escapeHtml(t.title)}</td><td>${fmtDate(t.due_date)}</td><td>${statusLabel(t.status)}</td>
+    <td>${taskActionButtons(t, `deleteTeamTask('${t.id}')`)}</td>
+  </tr>`).join('') || '<tr><td colspan="5" class="empty">کاری ثبت نشده</td></tr>';
+
+  const summary = document.getElementById('team-task-summary');
+  if (summary) {
+    const c = { new: 0, progress: 0, done: 0 };
+    rows.forEach(t => { c[t.status] = (c[t.status]||0) + 1; });
+    summary.innerHTML = filterId
+      ? `از مجموع ${rows.length} کار: <b>${c.new||0}</b> انجام‌نشده، <b>${c.progress||0}</b> در حال انجام، <b>${c.done||0}</b> انجام‌شده`
+      : `مجموع ${rows.length} کار برای همه پرسنل`;
+  }
 }
-async function deleteTeamTask(id) { await sb.from('personal_tasks').delete().eq('id', id); loadTeamTasks(); }
+async function deleteTeamTask(id) {
+  await apiPost('/api/task-calendar', { task_id: id, action: 'remove' });
+  await sb.from('personal_tasks').delete().eq('id', id);
+  loadTeamTasks();
+}
 
 // ================= داشبورد =================
 function renderDashboard() {
@@ -963,7 +1049,7 @@ async function addOfficeTask() {
   const client_id = document.getElementById('task-client').value || null;
   if (!title) return;
   await sb.from('tasks').insert([{ title, date, client_id, status: 'new' }]);
-  if (date) fetch('/api/create-event', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ title, date }) }).catch(()=>{});
+  if (date) apiPost('/api/create-event', { title, date });
   document.getElementById('task-title').value=''; clearJalaliDate('task-date');
   loadOfficeTasks();
 }
@@ -1248,8 +1334,17 @@ async function saveEditModal(table, id) {
   });
   const { error } = await sb.from(table).update(payload).eq('id', id);
   if (error) { alert('ذخیره نشد: ' + error.message); return; }
+  if (table === 'personal_tasks') apiPost('/api/task-calendar', { task_id: id, action: 'sync' });
   closeEditModal();
-  if (currentProfile.is_admin) refreshAllErpData(); else renderTasksSection();
+  if (currentProfile.is_admin) { refreshAllErpData(); if (document.getElementById('teamtasks-table')) loadTeamTasks(); }
+  else renderTasksSection();
 }
 
 checkSession();
+
+const _calParam = new URLSearchParams(location.search).get('calendar');
+if (_calParam) {
+  window.history.replaceState({}, '', location.pathname);
+  if (_calParam === 'connected') setTimeout(() => alert('گوگل کلندر با موفقیت وصل شد.'), 300);
+  else if (_calParam === 'error') setTimeout(() => alert('اتصال گوگل کلندر ناموفق بود، دوباره تلاش کن.'), 300);
+}
