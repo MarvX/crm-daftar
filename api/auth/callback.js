@@ -1,9 +1,10 @@
+import { verifyState, svcHeaders, restUrl } from '../_lib.js';
+
+// برگشت از گوگل: حساب گوگل را به همان کاربری که اتصال را شروع کرده وصل می‌کنیم
 export default async function handler(req, res) {
-  const code = req.query.code;
-  if (!code) {
-    res.status(400).send('کد ورود از گوگل دریافت نشد.');
-    return;
-  }
+  const { code, state, error } = req.query;
+  const userId = verifyState(state);
+  if (error || !code || !userId) { res.redirect('/?calendar=error'); return; }
 
   try {
     const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
@@ -17,35 +18,27 @@ export default async function handler(req, res) {
         grant_type: 'authorization_code'
       })
     });
-
     const tokenData = await tokenRes.json();
+    if (!tokenData.refresh_token) { res.redirect('/?calendar=error'); return; }
 
-    if (!tokenData.access_token) {
-      res.status(400).json({ error: 'اتصال ناموفق بود', details: tokenData });
-      return;
-    }
+    let email = null;
+    try {
+      email = JSON.parse(Buffer.from(tokenData.id_token.split('.')[1], 'base64url').toString()).email || null;
+    } catch { /* ایمیل اختیاری است */ }
 
-    const expiry = new Date(Date.now() + tokenData.expires_in * 1000).toISOString();
-
-    // ذخیره توکن در Supabase
-    await fetch(`${process.env.SUPABASE_URL}/rest/v1/google_tokens`, {
+    const save = await fetch(restUrl('google_connections?on_conflict=user_id'), {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'apikey': process.env.SUPABASE_ANON_KEY,
-        'Authorization': `Bearer ${process.env.SUPABASE_ANON_KEY}`,
-        'Prefer': 'resolution=merge-duplicates'
-      },
+      headers: svcHeaders({ Prefer: 'resolution=merge-duplicates,return=minimal' }),
       body: JSON.stringify({
-        id: 1,
-        access_token: tokenData.access_token,
+        user_id: userId,
         refresh_token: tokenData.refresh_token,
-        expiry
+        google_email: email,
+        needs_reconnect: false,
+        connected_at: new Date().toISOString()
       })
     });
-
-    res.redirect('/?calendar=connected');
-  } catch (err) {
-    res.status(500).json({ error: 'خطای داخلی', details: err.message });
+    res.redirect(save.ok ? '/?calendar=connected' : '/?calendar=error');
+  } catch {
+    res.redirect('/?calendar=error');
   }
 }
