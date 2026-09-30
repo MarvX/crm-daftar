@@ -94,6 +94,10 @@ export function buildEvent({ title, due_date, status }) {
     start: { date: due_date },
     end: { date: nextDay(due_date) },
     transparency: 'transparent',
-    reminders: { useDefault: false, overrides: [{ method: 'popup', minutes: 900 }] }
+    reminders: { useDefault: false, overrides: [
+      { method: 'popup', minutes: 3780 }, // ۳ روز قبل، ساعت ۹ صبح
+      { method: 'popup', minutes: 900 },  // یک روز قبل، ساعت ۹ صبح
+      { method: 'email', minutes: 900 }   // ایمیل یادآوری، یک روز قبل
+    ] }
   };
 }
