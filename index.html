@@ -103,6 +103,15 @@
   .calendar-event-row{display:flex;gap:10px;align-items:flex-start;border:1px solid var(--border);border-radius:10px;padding:10px;margin-bottom:7px;background:var(--bg)}
   .calendar-event-type{font-size:10px;color:var(--muted);min-width:72px}
   @media(max-width:700px){.calendar-day{min-height:58px;padding:6px}.calendar-weekdays{font-size:9px}.calendar-day-number{font-size:13px}.calendar-day-count{min-width:19px;height:19px;font-size:10px}}
+
+  .calendar-day.holiday{border-color:#c0392b;background:rgba(192,57,43,.08)}
+  .calendar-day.holiday .calendar-day-number{color:#c0392b}
+  .calendar-day.weekend{background:rgba(120,120,140,.08)}
+  .calendar-day.holiday.weekend{background:rgba(192,57,43,.10)}
+  .calendar-holiday-mark{font-size:9px;font-weight:800;color:#c0392b}
+  .calendar-holiday-detail{background:rgba(192,57,43,.09);border:1px solid rgba(192,57,43,.25);color:#c0392b;border-radius:9px;padding:10px;margin-bottom:10px;font-size:12px;font-weight:700}
+  body.dark .calendar-day.holiday{background:rgba(192,57,43,.16);border-color:#e06b5c}
+  body.dark .calendar-day.holiday .calendar-day-number,body.dark .calendar-holiday-mark,body.dark .calendar-holiday-detail{color:#ff8b7d}
 </style>
 </head>
 <body>
