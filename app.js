@@ -482,7 +482,8 @@ async function loadProfileAndShowApp() {
 
 
 // ================= اعلان فوری کار جدید =================
-let swReg = null, taskChannel = null;\nconst PUSH_FUNCTION_URL = 'https://ooeedxwyjpcgurxeutdb.supabase.co/functions/v1/attendance-reminder-v3';
+let swReg = null, taskChannel = null;
+const PUSH_FUNCTION_URL = 'https://ooeedxwyjpcgurxeutdb.supabase.co/functions/v1/attendance-reminder-v3';
 
 function urlBase64ToUint8Array(base64String) {
   const padding = '='.repeat((4 - base64String.length % 4) % 4);
