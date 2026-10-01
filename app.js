@@ -447,6 +447,56 @@ async function checkSession() {
   if (data.session) { currentUser = data.session.user; sessionToken = data.session.access_token; await loadProfileAndShowApp(); }
 }
 
+function showForgotPassword() {
+  const root=document.getElementById('edit-modal-root');
+  root.innerHTML=`<div class="overlay" onclick="if(event.target===this)this.remove()"><div class="modal">
+    <h3>فراموشی رمز عبور</h3>
+    <p style="font-size:13px;line-height:1.9;margin:0;color:var(--text)">
+      در حال حاضر حساب‌های دفتر با نام کاربری داخلی ساخته شده‌اند و ایمیل بازیابی ندارند.
+      برای امنیت، رمزها در هیچ جدول دیتابیسی به‌صورت قابل‌خواندن نگهداری نمی‌شوند.
+    </p>
+    <div class="card" style="margin:14px 0;background:var(--bg)">
+      <strong>راه‌حل:</strong>
+      <div style="font-size:12px;color:var(--muted);margin-top:6px;line-height:1.8">
+        با مدیر دفتر تماس بگیر؛ مدیر از بخش «تیم» می‌تواند رمز این حساب را ریست کند و یک رمز موقت بگیرد.
+      </div>
+    </div>
+    <div class="modal-actions"><button class="btn" onclick="this.closest('.overlay').remove()">متوجه شدم</button></div>
+  </div></div>`;
+}
+
+async function changeMyPassword() {
+  const next = prompt('رمز جدید را وارد کنید (حداقل ۸ کاراکتر):');
+  if (next === null) return;
+  if (next.length < 8) { alert('رمز باید حداقل ۸ کاراکتر باشد.'); return; }
+  const { error } = await sb.auth.updateUser({ password: next });
+  if (error) { alert('تغییر رمز انجام نشد: ' + error.message); return; }
+  showToast('رمز عبور با موفقیت تغییر کرد ✅');
+}
+
+async function resetUserPassword(userId, userName) {
+  if (!currentProfile?.is_admin) return;
+  if (!confirm('رمز ورود «' + userName + '» ریست شود؟')) return;
+  const r = await apiPost('/api/admin-reset-password', { user_id: userId });
+  if (!r || r.status !== 'reset') {
+    alert('ریست رمز انجام نشد. دوباره تلاش کن.');
+    return;
+  }
+  const root=document.getElementById('edit-modal-root');
+  root.innerHTML=`<div class="overlay"><div class="modal">
+    <h3>🔐 رمز موقت ساخته شد</h3>
+    <p style="font-size:13px;line-height:1.8">
+      رمز موقت کاربر <strong>${escapeHtml(userName)}</strong>:
+    </p>
+    <div style="direction:ltr;text-align:center;font-size:20px;font-weight:800;background:var(--bg);border:1px solid var(--border);padding:12px;border-radius:10px;word-break:break-all;">${escapeHtml(r.temp_password)}</div>
+    <p style="font-size:11px;color:var(--muted);margin-bottom:0;">این رمز فقط همین بار نمایش داده می‌شود. آن را برای کاربر ارسال کنید و از او بخواهید بعد از ورود رمز خودش را تغییر دهد.</p>
+    <div class="modal-actions">
+      <button class="btn secondary" onclick="navigator.clipboard?.writeText(${JSON.stringify(r.temp_password)});showToast('رمز کپی شد');">کپی رمز</button>
+      <button class="btn" onclick="this.closest('.overlay').remove()">بستن</button>
+    </div>
+  </div></div>`;
+}
+
 const NAV_ITEMS = [
   { id: 'attendance', label: 'ورود و خروج' },
   { id: 'tasks', label: 'کارها' },
@@ -623,16 +673,21 @@ function buildNav() {
 function switchSection(id) {
   document.querySelectorAll('#top-nav button').forEach(b => b.classList.toggle('active', b.dataset.id === id));
   document.querySelectorAll('main > div').forEach(d => d.classList.add('hidden'));
-  document.getElementById('section-' + id).classList.remove('hidden');
+  const section = document.getElementById('section-' + id);
+  if (!section) return;
+  section.classList.remove('hidden');
+
   const renderMap = {
-    dashboard: renderDashboard, calendar: renderCalendar, pipeline: renderPipeline, clients: renderClients,
+    dashboard: renderDashboard, pipeline: renderPipeline, clients: renderClients,
     projects: renderProjects, contracts: renderContracts, team: renderTeam,
     'erp-tasks': renderErpTasks, costs: renderFixedCosts, tenders: renderTenders,
     'office-tasks': renderOfficeTasks
   };
+
   if (id === 'attendance') renderAttendanceSection();
   else if (id === 'tasks') renderTasksSection();
-  else if (renderMap[id]) document.getElementById('section-' + id).innerHTML = renderMap[id]();
+  else if (id === 'calendar') renderCalendar();
+  else if (renderMap[id]) section.innerHTML = renderMap[id]();
 }
 
 async function refreshAllErpData() {
@@ -1365,6 +1420,20 @@ function renderTeam() {
     html += `</tbody></table>`;
   }
   html += `</div>`;
+
+  const accounts = (allProfiles || []).map(p => `
+    <tr>
+      <td>${escapeHtml(p.full_name || '—')}</td>
+      <td>${escapeHtml(p.role_title || (p.is_admin ? 'مدیر' : 'عضو تیم'))}</td>
+      <td>${p.is_admin ? 'مدیر' : 'کاربر'}</td>
+      <td><button class="btn small secondary" onclick="resetUserPassword('${p.id}', ${JSON.stringify(p.full_name || 'کاربر')})">🔐 ریست رمز</button></td>
+    </tr>`).join('');
+
+  html += `<div class="card">
+    <div class="row-top"><h2>🔐 حساب‌های ورود</h2><span style="font-size:11px;color:var(--muted)">پسوردها ذخیره یا نمایش دائمی نمی‌شوند</span></div>
+    <table><thead><tr><th>نام</th><th>سمت</th><th>نوع حساب</th><th></th></tr></thead>
+    <tbody>${accounts || '<tr><td colspan="4" class="empty">حسابی پیدا نشد</td></tr>'}</tbody></table>
+  </div>`;
   return html;
 }
 async function addMember() {
