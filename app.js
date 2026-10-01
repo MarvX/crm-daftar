@@ -700,7 +700,7 @@ async function openAttendanceQR() {
     <p style="font-size:11px;color:var(--muted)">بعد از اسکن، CRM باید روی گوشی باز باشد و کاربر وارد حسابش شده باشد.</p>
     <div class="modal-actions"><button class="btn secondary" onclick="this.closest('.overlay').remove()">بستن</button></div>
   </div></div>`;
-  new QRCode(document.getElementById('attendance-qr'),{text:location.origin+'/?attendance_qr=DAST-OFFICE-QR-2026',width:240,height:240});
+  new QRCode(document.getElementById('attendance-qr'),{text:location.origin+'/?attendance_qr=DAST-OFFICE-203ee7c4cfcd4e9d8b7d95ed05ab5f83',width:240,height:240});
 }
 async function consumeAttendanceQR(token) {
   const {data,error}=await sb.from('attendance_qr_tokens').select('*').eq('token',token).gt('expires_at',new Date().toISOString()).single();
