@@ -482,7 +482,59 @@ async function loadProfileAndShowApp() {
 
 
 // ================= اعلان فوری کار جدید =================
-let swReg = null, taskChannel = null;
+let swReg = null, taskChannel = null;\nconst PUSH_FUNCTION_URL = 'https://ooeedxwyjpcgurxeutdb.supabase.co/functions/v1/attendance-reminder-v3';
+
+function urlBase64ToUint8Array(base64String) {
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const rawData = atob(base64);
+  return Uint8Array.from([...rawData].map(c => c.charCodeAt(0)));
+}
+
+async function subscribeToPushNotifications() {
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+    alert('مرورگر شما از اعلان Push پشتیبانی نمی‌کند.');
+    return false;
+  }
+  try {
+    const permission = Notification.permission === 'granted'
+      ? 'granted'
+      : await Notification.requestPermission();
+    if (permission !== 'granted') return false;
+
+    swReg = swReg || await navigator.serviceWorker.register('/sw.js');
+    const keyResponse = await fetch(PUSH_FUNCTION_URL);
+    const keyData = await keyResponse.json();
+    if (!keyData.publicKey) throw new Error('public_key_missing');
+
+    let subscription = await swReg.pushManager.getSubscription();
+    if (!subscription) {
+      subscription = await swReg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(keyData.publicKey)
+      });
+    }
+
+    const { error } = await sb.from('push_subscriptions').upsert({
+      user_id: currentUser.id,
+      endpoint: subscription.endpoint,
+      subscription: subscription.toJSON(),
+      updated_at: new Date().toISOString()
+    }, { onConflict: 'user_id,endpoint' });
+    if (error) throw error;
+
+    const btn = document.getElementById('notif-btn');
+    if (btn) { btn.classList.remove('hidden'); btn.innerText = '🔔 اعلان‌ها فعال است'; }
+    showToast('اعلان‌های یادآوری ورود و خروج فعال شد');
+    return true;
+  } catch (e) {
+    console.error('push subscription error', e);
+    alert('فعال‌سازی اعلان انجام نشد. اگر مرورگر اجازه اعلان را نمی‌دهد، از تنظیمات سایت آن را فعال کن.');
+    return false;
+  }
+}
+
+
 function showToast(msg) {
   const t = document.createElement('div');
   t.textContent = msg;
@@ -499,15 +551,25 @@ async function notifyUser(title, body) {
   } catch (e) { /* اعلان سیستمی ممکن نشد؛ پیام داخل صفحه نمایش داده شد */ }
 }
 async function enableNotifications() {
-  if (!('Notification' in window)) { alert('مرورگر شما از اعلان پشتیبانی نمی‌کند.'); return; }
-  const p = await Notification.requestPermission();
-  const btn = document.getElementById('notif-btn');
-  if (p === 'granted') { if (btn) btn.classList.add('hidden'); notifyUser('اعلان‌ها فعال شد', 'از این به بعد کارهای جدید را همین‌جا می‌بینی'); }
+  await subscribeToPushNotifications();
 }
 async function startTaskNotifications() {
   if ('serviceWorker' in navigator) { try { swReg = await navigator.serviceWorker.register('/sw.js'); } catch (e) {} }
   const btn = document.getElementById('notif-btn');
-  if (btn && 'Notification' in window && Notification.permission === 'default') btn.classList.remove('hidden');
+  if (btn && 'Notification' in window) {
+    if (Notification.permission === 'default') {
+      btn.classList.remove('hidden');
+      btn.innerText = '🔔 فعال‌سازی اعلان';
+    } else if (Notification.permission === 'granted') {
+      try {
+        const sub = await swReg?.pushManager?.getSubscription();
+        btn.classList.remove('hidden');
+        btn.innerText = sub ? '🔔 اعلان‌ها فعال است' : '🔔 فعال‌سازی اعلان';
+      } catch (e) {
+        btn.classList.remove('hidden');
+      }
+    }
+  }
   if (taskChannel) sb.removeChannel(taskChannel);
   taskChannel = sb.channel('tasks-' + currentUser.id)
     .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'personal_tasks', filter: `user_id=eq.${currentUser.id}` }, (payload) => {
