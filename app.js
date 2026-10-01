@@ -351,6 +351,7 @@ let currentUser = null, currentProfile = null;
 let attendanceTimer = null, activeCheckIn = null;
 let allProfiles = [];
 
+let personalTasks = [];
 let leads = [], clients = [], projects = [], contracts = [], contractStagesMap = {},
     members = [], erpTasks = [], fixedCosts = [], tenders = [], interactions = [];
 
@@ -679,17 +680,21 @@ function initDarkMode(){ if(localStorage.getItem('dast-dark')==='1') document.bo
 
 function renderCalendar() {
   const box=document.getElementById('section-calendar');
-  const today=new Date();
+  const today=new Date().toISOString().slice(0,10);
   const items=[];
-  (erpTasks||[]).forEach(t=>{ if(t.due_date) items.push({date:t.due_date,title:t.title,type:'وظیفه',meta:t.responsible_member_name||''}); });
-  (interactions||[]).forEach(i=>{ if(i.next_follow_up_date) items.push({date:i.next_follow_up_date,title:i.related_name||'پیگیری',type:i.type||'پیگیری',meta:i.note||''}); });
-  (tenders||[]).forEach(t=>{ if(t.event_date) items.push({date:t.event_date,title:t.title,type:t.type||'رویداد',meta:t.issuing_body||''}); });
-  (contracts||[]).forEach(c=>{ (contractStagesMap[c.id]||[]).forEach(s=>{if(s.due_date) items.push({date:s.due_date,title:(c.project_title||'قرارداد')+' — '+s.title,type:'سررسید پرداخت',meta:(s.amount||0).toLocaleString('fa-IR')+' تومان'});}); });
+  (personalTasks||[]).forEach(t=>{ if(t.due_date) items.push({date:t.due_date,title:t.title,type:'کار شخصی',meta:t.status==='done'?'انجام‌شده':statusLabel(t.status).replace(/<[^>]+>/g,'')}); });
+  if (currentProfile && currentProfile.is_admin) {
+    (erpTasks||[]).forEach(t=>{ if(t.due_date) items.push({date:t.due_date,title:t.title,type:'وظیفه دفتر',meta:t.responsible_member_name||''}); });
+    (interactions||[]).forEach(i=>{ if(i.next_follow_up_date) items.push({date:i.next_follow_up_date,title:i.related_name||'پیگیری',type:i.type||'پیگیری',meta:i.note||''}); });
+    (tenders||[]).forEach(t=>{ if(t.event_date) items.push({date:t.event_date,title:t.title,type:t.type||'رویداد',meta:t.issuing_body||''}); });
+    (contracts||[]).forEach(c=>{ (contractStagesMap[c.id]||[]).forEach(s=>{if(s.due_date) items.push({date:s.due_date,title:(c.project_title||'قرارداد')+' — '+s.title,type:'سررسید پرداخت',meta:(s.amount||0).toLocaleString('fa-IR')+' تومان'});}); });
+  }
   items.sort((a,b)=>String(a.date).localeCompare(String(b.date)));
-  const upcoming=items.filter(x=>x.date>=today.toISOString().slice(0,10)).slice(0,30);
-  box.innerHTML=`<div class="card"><div class="row-top"><h2>📅 تقویم دفتر</h2><button class="btn small secondary" onclick="switchSection('tasks')">+ رفتن به کارها</button></div>
-  <div class="calendar-list">${upcoming.length?upcoming.map(x=>`<div class="calendar-item"><div class="calendar-date">${fmtDate(x.date)}</div><div><strong>${escapeHtml(x.title)}</strong><div class="meta">${escapeHtml(x.type)} · ${escapeHtml(x.meta)}</div></div></div>`).join(''):'<div class="empty">موردی برای روزهای آینده ثبت نشده.</div>'}</div></div>`;
+  const upcoming=items.filter(x=>x.date>=today).slice(0,40);
+  box.innerHTML=`<div class="card"><div class="row-top"><div><h2>📅 تقویم دفتر</h2><div style="font-size:12px;color:var(--muted)">کارهای نزدیک، پیگیری‌ها و سررسیدها در یک نگاه</div></div><button class="btn small secondary" onclick="switchSection('tasks')">+ رفتن به کارها</button></div>
+  <div class="calendar-list">${upcoming.length?upcoming.map(x=>`<div class="calendar-item" style="display:flex;gap:14px;align-items:center;padding:12px 4px;border-bottom:1px solid var(--border)"><div style="min-width:90px;font-weight:700;color:var(--navy-light)">${fmtDate(x.date)}</div><div><strong>${escapeHtml(x.title)}</strong><div style="color:var(--muted);font-size:11px;margin-top:3px">${escapeHtml(x.type)} · ${escapeHtml(x.meta)}</div></div></div>`).join(''):'<div class="empty">موردی برای روزهای آینده ثبت نشده.</div>'}</div></div>`;
 }
+
 
 async function openAttendanceQR() {
   const root=document.getElementById('edit-modal-root');
@@ -880,6 +885,7 @@ async function addMyTask() {
 }
 async function loadMyTasks() {
   const { data } = await sb.from('personal_tasks').select('*').eq('user_id', currentUser.id).order('due_date', { ascending: true });
+  personalTasks = data || [];
   const tbody = document.getElementById('mytasks-table'); if (!tbody) return;
   cacheRows('personal_tasks', data||[]);
   tbody.innerHTML = (data||[]).map(t => `<tr>
