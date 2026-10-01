@@ -693,19 +693,25 @@ function renderCalendar() {
 
 async function openAttendanceQR() {
   const root=document.getElementById('edit-modal-root');
-  const token=crypto.randomUUID();
-  const expires=Date.now()+5*60*1000;
-  root.innerHTML=`<div class="overlay" onclick="if(event.target===this)this.remove()"><div class="modal" style="text-align:center"><h3>📱 ثبت سریع حضور</h3><p style="font-size:12px;color:var(--muted)">این QR تا ۵ دقیقه معتبر است.</p><div id="attendance-qr" style="display:flex;justify-content:center;margin:16px"></div><div id="qr-code-text" style="font-size:11px;color:var(--muted)">در حال ساخت...</div><div class="modal-actions"><button class="btn secondary" onclick="this.closest('.overlay').remove()">بستن</button></div></div></div>`;
-  await sb.from('attendance_qr_tokens').insert({token,expires_at:new Date(expires).toISOString(),created_by:currentUser.id});
-  new QRCode(document.getElementById('attendance-qr'),{text:location.origin+'/?attendance_qr='+token,width:220,height:220});
-  document.getElementById('qr-code-text').innerText='اسکن کنید';
+  root.innerHTML=`<div class="overlay" onclick="if(event.target===this)this.remove()"><div class="modal" style="text-align:center">
+    <h3>📱 QR ورود و خروج دفتر</h3>
+    <p style="font-size:12px;color:var(--muted)">این QR را چاپ کن و جلوی ورودی دفتر بگذار. کارمند فقط اسکن می‌کند.</p>
+    <div id="attendance-qr" style="display:flex;justify-content:center;margin:16px"></div>
+    <p style="font-size:11px;color:var(--muted)">بعد از اسکن، CRM باید روی گوشی باز باشد و کاربر وارد حسابش شده باشد.</p>
+    <div class="modal-actions"><button class="btn secondary" onclick="this.closest('.overlay').remove()">بستن</button></div>
+  </div></div>`;
+  new QRCode(document.getElementById('attendance-qr'),{text:location.origin+'/?attendance_qr=DAST-OFFICE-QR-2026',width:240,height:240});
 }
 async function consumeAttendanceQR(token) {
   const {data,error}=await sb.from('attendance_qr_tokens').select('*').eq('token',token).gt('expires_at',new Date().toISOString()).is('used_at',null).single();
   if(error||!data){showToast('QR منقضی یا نامعتبر است');return;}
-  await sb.from('attendance_qr_tokens').update({used_at:new Date().toISOString(),used_by:currentUser.id}).eq('id',data.id);
+  const active = await sb.from('attendance').select('*').eq('user_id',currentUser.id).is('check_out',null).order('created_at',{ascending:false}).limit(1);
+  const row=active.data?.[0];
+  const action=row?'خروج':'ورود';
+  const update=await sb.from('attendance_qr_tokens').update({used_at:new Date().toISOString(),used_by:currentUser.id}).eq('id',data.id).is('used_at',null);
+  if(update.error){showToast('این QR قبلاً استفاده شده یا دوباره تلاش کن');return;}
   await toggleAttendance();
-  showToast('حضور شما با QR ثبت شد ✅');
+  showToast(action+' شما با QR ثبت شد ✅');
 }
 
 // ================= حضور و غیاب =================
@@ -727,7 +733,7 @@ function renderAttendanceSection() {
     <div class="card">
       <div class="counter" id="attendance-counter">--:--:--</div>
       <div style="text-align:center;"><button class="btn big" id="attendance-btn" onclick="toggleAttendance()">ثبت ورود</button></div>
-      <div style="text-align:center;margin-top:10px;"><button class="btn secondary small" onclick="openAttendanceQR()">📱 نمایش QR ثبت سریع</button></div>
+      <div style="text-align:center;margin-top:10px;"><button class="btn secondary small" onclick="openAttendanceQR()">📱 نمایش QR دفتر</button></div>
       <h3 style="margin-top:24px;">تاریخچه</h3>
       <table><thead><tr><th>تاریخ</th><th>ورود</th><th>خروج</th><th>مدت</th></tr></thead><tbody id="attendance-table"></tbody></table>
     </div>
@@ -1506,6 +1512,15 @@ async function saveEditModal(table, id) {
 }
 
 checkSession();
+
+const _attendanceQrParam = new URLSearchParams(location.search).get('attendance_qr');
+if (_attendanceQrParam) {
+  window.history.replaceState({}, '', location.pathname);
+  setTimeout(() => {
+    if (currentUser) consumeAttendanceQR(_attendanceQrParam);
+    else showToast('ابتدا وارد CRM شوید تا ورود یا خروج ثبت شود.');
+  }, 900);
+}
 
 const _calParam = new URLSearchParams(location.search).get('calendar');
 if (_calParam) {
