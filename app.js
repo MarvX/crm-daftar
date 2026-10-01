@@ -431,6 +431,10 @@ async function doLogin() {
 }
 async function doLogout() {
   if (taskChannel) { sb.removeChannel(taskChannel); taskChannel = null; }
+  try {
+    const sub = swReg && await swReg.pushManager.getSubscription();
+    if (sub) { await apiPost('/api/push-subscribe', { action: 'unsubscribe', endpoint: sub.endpoint }); }
+  } catch (e) {}
   await sb.auth.signOut();
   sessionToken = null;
   clearInterval(attendanceTimer);
@@ -483,59 +487,6 @@ async function loadProfileAndShowApp() {
 
 // ================= اعلان فوری کار جدید =================
 let swReg = null, taskChannel = null;
-const PUSH_FUNCTION_URL = 'https://ooeedxwyjpcgurxeutdb.supabase.co/functions/v1/attendance-reminder-v3';
-
-function urlBase64ToUint8Array(base64String) {
-  const padding = '='.repeat((4 - base64String.length % 4) % 4);
-  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
-  const rawData = atob(base64);
-  return Uint8Array.from([...rawData].map(c => c.charCodeAt(0)));
-}
-
-async function subscribeToPushNotifications() {
-  if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
-    alert('مرورگر شما از اعلان Push پشتیبانی نمی‌کند.');
-    return false;
-  }
-  try {
-    const permission = Notification.permission === 'granted'
-      ? 'granted'
-      : await Notification.requestPermission();
-    if (permission !== 'granted') return false;
-
-    swReg = swReg || await navigator.serviceWorker.register('/sw.js');
-    const keyResponse = await fetch(PUSH_FUNCTION_URL);
-    const keyData = await keyResponse.json();
-    if (!keyData.publicKey) throw new Error('public_key_missing');
-
-    let subscription = await swReg.pushManager.getSubscription();
-    if (!subscription) {
-      subscription = await swReg.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(keyData.publicKey)
-      });
-    }
-
-    const { error } = await sb.from('push_subscriptions').upsert({
-      user_id: currentUser.id,
-      endpoint: subscription.endpoint,
-      subscription: subscription.toJSON(),
-      updated_at: new Date().toISOString()
-    }, { onConflict: 'user_id,endpoint' });
-    if (error) throw error;
-
-    const btn = document.getElementById('notif-btn');
-    if (btn) { btn.classList.remove('hidden'); btn.innerText = '🔔 اعلان‌ها فعال است'; }
-    showToast('اعلان‌های یادآوری ورود و خروج فعال شد');
-    return true;
-  } catch (e) {
-    console.error('push subscription error', e);
-    alert('فعال‌سازی اعلان انجام نشد. اگر مرورگر اجازه اعلان را نمی‌دهد، از تنظیمات سایت آن را فعال کن.');
-    return false;
-  }
-}
-
-
 function showToast(msg) {
   const t = document.createElement('div');
   t.textContent = msg;
@@ -551,25 +502,70 @@ async function notifyUser(title, body) {
     else new Notification(title, { body, dir: 'rtl' });
   } catch (e) { /* اعلان سیستمی ممکن نشد؛ پیام داخل صفحه نمایش داده شد */ }
 }
-async function enableNotifications() {
-  await subscribeToPushNotifications();
+const VAPID_PUBLIC_KEY = 'BBlhXzAtTRWGRgqQbXw7eaNFdRl_pKd4Gjzg2vGKNdplVGfAq0GGM2pGRpbe5r1inrgmc0GNfkNX8XYGokzdPpg';
+function b64ToUint8(b64) {
+  const pad = '='.repeat((4 - b64.length % 4) % 4);
+  const raw = atob((b64 + pad).replace(/-/g, '+').replace(/_/g, '/'));
+  return Uint8Array.from([...raw].map(c => c.charCodeAt(0)));
 }
+const isStandalone = () => window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+const isIOS = () => /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+const pushSupported = () => 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+
+// ثبت این دستگاه برای دریافت اعلان‌های سرور (یادآور ورود و خروج)
+async function subscribeToPush() {
+  if (!pushSupported() || !swReg) return false;
+  let sub = await swReg.pushManager.getSubscription();
+  if (!sub) sub = await swReg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64ToUint8(VAPID_PUBLIC_KEY) });
+  const r = await apiPost('/api/push-subscribe', { subscription: sub.toJSON() });
+  return r && r.status === 'saved';
+}
+async function enableNotifications() {
+  if (isIOS() && !isStandalone()) { showInstallHelp(); return; }
+  if (!pushSupported()) { alert('این مرورگر از اعلان پشتیبانی نمی‌کند. از کروم یا سافاری استفاده کن.'); return; }
+  const p = await Notification.requestPermission();
+  if (p !== 'granted') { alert('اجازه‌ی اعلان داده نشد. از تنظیمات مرورگر/گوشی می‌توانی فعالش کنی.'); return; }
+  const ok = await subscribeToPush();
+  const btn = document.getElementById('notif-btn');
+  if (ok) { if (btn) btn.classList.add('hidden'); notifyUser('اعلان‌ها فعال شد ✅', 'یادآور ورود (۹ صبح) و خروج (۵ عصر) برای این دستگاه فعال است.'); }
+  else alert('فعال‌سازی اعلان روی سرور ثبت نشد، دوباره تلاش کن.');
+}
+
+// نصب اپ روی گوشی
+let deferredInstall = null;
+window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); deferredInstall = e; updateInstallBtn(); });
+window.addEventListener('appinstalled', () => { deferredInstall = null; updateInstallBtn(); });
+function updateInstallBtn() {
+  const btn = document.getElementById('install-btn'); if (!btn) return;
+  btn.classList.toggle('hidden', isStandalone() || !currentUser);
+}
+async function installApp() {
+  if (deferredInstall) { deferredInstall.prompt(); await deferredInstall.userChoice; deferredInstall = null; updateInstallBtn(); }
+  else showInstallHelp();
+}
+function showInstallHelp() {
+  const ios = isIOS();
+  const steps = ios
+    ? ['در Safari این صفحه را باز کن (نه کروم)', 'روی دکمه‌ی اشتراک‌گذاری (مربع با فلش رو به بالا) بزن', '«Add to Home Screen» (افزودن به صفحه‌ی اصلی) را انتخاب کن', 'اپ را از آیکونش روی صفحه‌ی اصلی باز کن و آنجا «فعال‌سازی اعلان» را بزن']
+    : ['روی منوی سه‌نقطه‌ی مرورگر بزن', '«Install app» یا «افزودن به صفحه‌ی اصلی» را انتخاب کن', 'اپ را از آیکونش روی صفحه‌ی اصلی باز کن'];
+  const root = document.getElementById('edit-modal-root');
+  root.innerHTML = `<div class="overlay" onclick="if(event.target===this) this.remove()"><div class="modal">
+    <h3>نصب اپ روی ${ios ? 'آیفون' : 'گوشی'}</h3>
+    <ol style="line-height:2;padding-right:18px;margin:0;">${steps.map(t => `<li>${t}</li>`).join('')}</ol>
+    ${ios ? '<p style="font-size:12px;color:var(--muted);">در آیفون، اعلان فقط بعد از نصب اپ روی صفحه‌ی اصلی کار می‌کند (iOS نسخه ۱۶.۴ به بالا).</p>' : ''}
+    <div class="modal-actions"><button class="btn" onclick="this.closest('.overlay').remove()">متوجه شدم</button></div>
+  </div></div>`;
+}
+
 async function startTaskNotifications() {
   if ('serviceWorker' in navigator) { try { swReg = await navigator.serviceWorker.register('/sw.js'); } catch (e) {} }
+  updateInstallBtn();
   const btn = document.getElementById('notif-btn');
-  if (btn && 'Notification' in window) {
-    if (Notification.permission === 'default') {
-      btn.classList.remove('hidden');
-      btn.innerText = '🔔 فعال‌سازی اعلان';
-    } else if (Notification.permission === 'granted') {
-      try {
-        const sub = await swReg?.pushManager?.getSubscription();
-        btn.classList.remove('hidden');
-        btn.innerText = sub ? '🔔 اعلان‌ها فعال است' : '🔔 فعال‌سازی اعلان';
-      } catch (e) {
-        btn.classList.remove('hidden');
-      }
-    }
+  if (pushSupported() && Notification.permission === 'granted') {
+    subscribeToPush().catch(() => {});                       // هر بار ورود، دستگاه دوباره روی حساب فعلی ثبت می‌شود
+    if (btn) btn.classList.add('hidden');
+  } else if (btn) {
+    btn.classList.remove('hidden');                          // در آیفونِ نصب‌نشده هم نمایش داده می‌شود تا راهنما بیاید
   }
   if (taskChannel) sb.removeChannel(taskChannel);
   taskChannel = sb.channel('tasks-' + currentUser.id)

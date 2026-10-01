@@ -1,32 +1,27 @@
+// سرویس‌ورکر: دریافت اعلان‌های سرور (حتی وقتی اپ بسته است) و باز کردن اپ با کلیک
 self.addEventListener('install', () => self.skipWaiting());
 self.addEventListener('activate', (e) => e.waitUntil(self.clients.claim()));
 
 self.addEventListener('push', (event) => {
-  let data = {};
-  try { data = event.data ? event.data.json() : {}; } catch (_) {}
-  const title = data.title || 'دفتر دَست';
-  const options = {
-    body: data.body || 'یک یادآوری برای شما داریم.',
-    icon: '/icon-192.png',
-    badge: '/icon-192.png',
-    tag: data.tag || 'office-reminder',
-    renotify: true,
+  let data = { title: 'دفتر دَست', body: '', url: '/' };
+  try { data = { ...data, ...event.data.json() }; } catch (e) { /* بدون داده */ }
+  event.waitUntil(self.registration.showNotification(data.title, {
+    body: data.body,
+    tag: data.tag,
+    renotify: !!data.tag,
     dir: 'rtl',
     lang: 'fa',
+    icon: '/icons/icon-192.png',
+    badge: '/icons/icon-192.png',
     data: { url: data.url || '/' }
-  };
-  event.waitUntil(self.registration.showNotification(title, options));
+  }));
 });
 
-self.addEventListener('notificationclick', (e) => {
-  e.notification.close();
-  const url = e.notification.data?.url || '/';
-  e.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
-    const existing = list.find(c => 'focus' in c);
-    if (existing) {
-      existing.navigate(url);
-      return existing.focus();
-    }
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const url = (event.notification.data && event.notification.data.url) || '/';
+  event.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((list) => {
+    for (const c of list) { if ('focus' in c) return c.focus(); }
     return self.clients.openWindow(url);
   }));
 });
