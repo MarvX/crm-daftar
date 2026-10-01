@@ -449,6 +449,7 @@ async function checkSession() {
 const NAV_ITEMS = [
   { id: 'attendance', label: 'ورود و خروج' },
   { id: 'tasks', label: 'کارها' },
+  { id: 'calendar', label: 'تقویم' },
   { id: 'dashboard', label: 'داشبورد', adminOnly: true },
   { id: 'pipeline', label: 'پایپ‌لاین سرنخ‌ها', adminOnly: true },
   { id: 'clients', label: 'کارفرمایان', adminOnly: true },
@@ -469,6 +470,7 @@ async function loadProfileAndShowApp() {
   document.getElementById('user-badge').innerText = `${currentProfile.full_name || ''} ${currentProfile.role_title ? '— ' + currentProfile.role_title : ''}`;
 
   buildNav();
+  initDarkMode();
   switchSection('attendance');
   loadAttendanceStatus();
   loadMyTasks();
@@ -622,7 +624,7 @@ function switchSection(id) {
   document.querySelectorAll('main > div').forEach(d => d.classList.add('hidden'));
   document.getElementById('section-' + id).classList.remove('hidden');
   const renderMap = {
-    dashboard: renderDashboard, pipeline: renderPipeline, clients: renderClients,
+    dashboard: renderDashboard, calendar: renderCalendar, pipeline: renderPipeline, clients: renderClients,
     projects: renderProjects, contracts: renderContracts, team: renderTeam,
     'erp-tasks': renderErpTasks, costs: renderFixedCosts, tenders: renderTenders,
     'office-tasks': renderOfficeTasks
@@ -662,6 +664,50 @@ async function refreshAllErpData() {
   if (current) switchSection(current.dataset.id);
 }
 
+// ================= قابلیت‌های جدید =================
+function toggleDarkMode() {
+  document.body.classList.toggle('dark');
+  localStorage.setItem('dast-dark', document.body.classList.contains('dark') ? '1' : '0');
+  updateDarkButton();
+}
+function updateDarkButton() {
+  const b=document.getElementById('dark-btn'); if(!b) return;
+  b.classList.remove('hidden');
+  b.innerText=document.body.classList.contains('dark') ? '☀️ حالت روشن' : '🌙 حالت تیره';
+}
+function initDarkMode(){ if(localStorage.getItem('dast-dark')==='1') document.body.classList.add('dark'); updateDarkButton(); }
+
+function renderCalendar() {
+  const box=document.getElementById('section-calendar');
+  const today=new Date();
+  const items=[];
+  (erpTasks||[]).forEach(t=>{ if(t.due_date) items.push({date:t.due_date,title:t.title,type:'وظیفه',meta:t.responsible_member_name||''}); });
+  (interactions||[]).forEach(i=>{ if(i.next_follow_up_date) items.push({date:i.next_follow_up_date,title:i.related_name||'پیگیری',type:i.type||'پیگیری',meta:i.note||''}); });
+  (tenders||[]).forEach(t=>{ if(t.event_date) items.push({date:t.event_date,title:t.title,type:t.type||'رویداد',meta:t.issuing_body||''}); });
+  (contracts||[]).forEach(c=>{ (contractStagesMap[c.id]||[]).forEach(s=>{if(s.due_date) items.push({date:s.due_date,title:(c.project_title||'قرارداد')+' — '+s.title,type:'سررسید پرداخت',meta:(s.amount||0).toLocaleString('fa-IR')+' تومان'});}); });
+  items.sort((a,b)=>String(a.date).localeCompare(String(b.date)));
+  const upcoming=items.filter(x=>x.date>=today.toISOString().slice(0,10)).slice(0,30);
+  box.innerHTML=`<div class="card"><div class="row-top"><h2>📅 تقویم دفتر</h2><button class="btn small secondary" onclick="switchSection('tasks')">+ رفتن به کارها</button></div>
+  <div class="calendar-list">${upcoming.length?upcoming.map(x=>`<div class="calendar-item"><div class="calendar-date">${fmtDate(x.date)}</div><div><strong>${escapeHtml(x.title)}</strong><div class="meta">${escapeHtml(x.type)} · ${escapeHtml(x.meta)}</div></div></div>`).join(''):'<div class="empty">موردی برای روزهای آینده ثبت نشده.</div>'}</div></div>`;
+}
+
+async function openAttendanceQR() {
+  const root=document.getElementById('edit-modal-root');
+  const token=crypto.randomUUID();
+  const expires=Date.now()+5*60*1000;
+  root.innerHTML=`<div class="overlay" onclick="if(event.target===this)this.remove()"><div class="modal" style="text-align:center"><h3>📱 ثبت سریع حضور</h3><p style="font-size:12px;color:var(--muted)">این QR تا ۵ دقیقه معتبر است.</p><div id="attendance-qr" style="display:flex;justify-content:center;margin:16px"></div><div id="qr-code-text" style="font-size:11px;color:var(--muted)">در حال ساخت...</div><div class="modal-actions"><button class="btn secondary" onclick="this.closest('.overlay').remove()">بستن</button></div></div></div>`;
+  await sb.from('attendance_qr_tokens').insert({token,expires_at:new Date(expires).toISOString(),created_by:currentUser.id});
+  new QRCode(document.getElementById('attendance-qr'),{text:location.origin+'/?attendance_qr='+token,width:220,height:220});
+  document.getElementById('qr-code-text').innerText='اسکن کنید';
+}
+async function consumeAttendanceQR(token) {
+  const {data,error}=await sb.from('attendance_qr_tokens').select('*').eq('token',token).gt('expires_at',new Date().toISOString()).is('used_at',null).single();
+  if(error||!data){showToast('QR منقضی یا نامعتبر است');return;}
+  await sb.from('attendance_qr_tokens').update({used_at:new Date().toISOString(),used_by:currentUser.id}).eq('id',data.id);
+  await toggleAttendance();
+  showToast('حضور شما با QR ثبت شد ✅');
+}
+
 // ================= حضور و غیاب =================
 function renderAttendanceSection() {
   const el = document.getElementById('section-attendance');
@@ -681,6 +727,7 @@ function renderAttendanceSection() {
     <div class="card">
       <div class="counter" id="attendance-counter">--:--:--</div>
       <div style="text-align:center;"><button class="btn big" id="attendance-btn" onclick="toggleAttendance()">ثبت ورود</button></div>
+      <div style="text-align:center;margin-top:10px;"><button class="btn secondary small" onclick="openAttendanceQR()">📱 نمایش QR ثبت سریع</button></div>
       <h3 style="margin-top:24px;">تاریخچه</h3>
       <table><thead><tr><th>تاریخ</th><th>ورود</th><th>خروج</th><th>مدت</th></tr></thead><tbody id="attendance-table"></tbody></table>
     </div>
