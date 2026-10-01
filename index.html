@@ -112,6 +112,7 @@
   <input type="text" id="login-username" placeholder="نام کاربری">
   <input type="password" id="login-password" placeholder="رمز عبور">
   <button class="btn" style="width:100%;" onclick="doLogin()">ورود</button>
+  <button class="btn secondary" style="width:100%;margin-top:8px;" onclick="showForgotPassword()">فراموشی رمز عبور</button>
   <div id="login-error" class="error-msg"></div>
 </div>
 
@@ -126,6 +127,7 @@
       <button class="btn secondary hidden" id="install-btn" onclick="installApp()" style="color:#fff;border-color:#fff;">📲 نصب اپ</button>
       <button class="btn secondary hidden" id="dark-btn" onclick="toggleDarkMode()" style="color:#fff;border-color:#fff;">🌙 حالت تیره</button>
       <button class="btn secondary hidden" id="notif-btn" onclick="enableNotifications()" style="color:#fff;border-color:#fff;">🔔 فعال‌سازی اعلان</button>
+      <button class="btn secondary" onclick="changeMyPassword()" style="color:#fff;border-color:#fff;">🔐 تغییر رمز</button>
       <button class="btn secondary" onclick="doLogout()" style="color:#fff;border-color:#fff;">خروج</button>
     </div>
   </header>
