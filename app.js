@@ -703,13 +703,11 @@ async function openAttendanceQR() {
   new QRCode(document.getElementById('attendance-qr'),{text:location.origin+'/?attendance_qr=DAST-OFFICE-QR-2026',width:240,height:240});
 }
 async function consumeAttendanceQR(token) {
-  const {data,error}=await sb.from('attendance_qr_tokens').select('*').eq('token',token).gt('expires_at',new Date().toISOString()).is('used_at',null).single();
+  const {data,error}=await sb.from('attendance_qr_tokens').select('*').eq('token',token).gt('expires_at',new Date().toISOString()).single();
   if(error||!data){showToast('QR منقضی یا نامعتبر است');return;}
   const active = await sb.from('attendance').select('*').eq('user_id',currentUser.id).is('check_out',null).order('created_at',{ascending:false}).limit(1);
   const row=active.data?.[0];
   const action=row?'خروج':'ورود';
-  const update=await sb.from('attendance_qr_tokens').update({used_at:new Date().toISOString(),used_by:currentUser.id}).eq('id',data.id).is('used_at',null);
-  if(update.error){showToast('این QR قبلاً استفاده شده یا دوباره تلاش کن');return;}
   await toggleAttendance();
   showToast(action+' شما با QR ثبت شد ✅');
 }
