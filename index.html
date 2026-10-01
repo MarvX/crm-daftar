@@ -15,6 +15,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
 <style>
   :root {
     --navy: #342D73; --navy-light: #4a4193; --bg: #f5f5fa; --surface: #ffffff;
@@ -101,6 +102,7 @@
     <div>
       <button class="btn secondary hidden" id="calendar-btn" onclick="connectCalendar()" style="color:#fff;border-color:#fff;">اتصال به گوگل کلندر</button>
       <button class="btn secondary hidden" id="install-btn" onclick="installApp()" style="color:#fff;border-color:#fff;">📲 نصب اپ</button>
+      <button class="btn secondary hidden" id="dark-btn" onclick="toggleDarkMode()" style="color:#fff;border-color:#fff;">🌙 حالت تیره</button>
       <button class="btn secondary hidden" id="notif-btn" onclick="enableNotifications()" style="color:#fff;border-color:#fff;">🔔 فعال‌سازی اعلان</button>
       <button class="btn secondary" onclick="doLogout()" style="color:#fff;border-color:#fff;">خروج</button>
     </div>
@@ -110,6 +112,7 @@
 
   <main>
     <div id="section-attendance" class="hidden"></div>
+    <div id="section-calendar" class="hidden"></div>
     <div id="section-tasks" class="hidden"></div>
     <div id="section-dashboard" class="hidden"></div>
     <div id="section-pipeline" class="hidden"></div>
