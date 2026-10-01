@@ -830,24 +830,40 @@ async function renderCalendar() {
     }
     const key = calendarDateKey(calendarJY, calendarJM, day);
     const count = (dayItems[key]||[]).length;
+    const holiday = holidayFor(calendarJY, calendarJM, day);
+    const g = JalaaliLib.toGregorian(calendarJY, calendarJM, day);
+    const isFriday = new Date(g.gy, g.gm-1, g.gd).getDay() === 5;
+    const isThursday = new Date(g.gy, g.gm-1, g.gd).getDay() === 4;
     const isToday = today.jy===calendarJY && today.jm===calendarJM && today.jd===day;
     const isSelected = calendarSelectedDay===day;
-    html += `<button class="calendar-day ${isToday?'today ':''}${isSelected?'selected':''}" onclick="selectCalendarDay(${day})">
+    const classes = [
+      'calendar-day',
+      isToday ? 'today' : '',
+      isSelected ? 'selected' : '',
+      holiday ? 'holiday' : '',
+      isFriday || isThursday ? 'weekend' : ''
+    ].filter(Boolean).join(' ');
+    html += `<button class="${classes}" onclick="selectCalendarDay(${day})">
       <span class="calendar-day-number">${toFaDigits(day)}</span>
-      ${count ? `<span class="calendar-day-count">${toFaDigits(count)}</span>` : '<span class="calendar-day-dot"></span>'}
+      <span style="display:flex;gap:5px;align-items:center;width:100%;justify-content:flex-end">
+        ${holiday ? '<span class="calendar-holiday-mark">تعطیل</span>' : ''}
+        ${count ? `<span class="calendar-day-count">${toFaDigits(count)}</span>` : '<span class="calendar-day-dot"></span>'}
+      </span>
     </button>`;
   }
   grid.innerHTML = html;
 
   const selectedKey = calendarDateKey(calendarJY, calendarJM, calendarSelectedDay);
   const selected = dayItems[selectedKey] || [];
+  const selectedHoliday = holidayFor(calendarJY, calendarJM, calendarSelectedDay);
   const details = document.getElementById('calendar-day-details');
   details.innerHTML = `
     <div style="font-size:14px;font-weight:800;margin-bottom:10px;">کارهای ${toFaDigits(calendarSelectedDay)} ${JALALI_MONTHS[calendarJM-1]}</div>
+    ${selectedHoliday ? `<div class="calendar-holiday-detail">🔴 ${escapeHtml(selectedHoliday)}</div>` : ''}
     ${selected.length ? selected.map(x => `<div class="calendar-event-row">
       <div class="calendar-event-type">${escapeHtml(x.type)}</div>
       <div style="flex:1"><strong>${escapeHtml(x.title)}</strong><div style="font-size:11px;color:var(--muted);margin-top:3px">${escapeHtml(x.meta||'')}</div></div>
-    </div>`).join('') : '<div class="empty" style="padding:12px 0;">برای این روز کاری ثبت نشده.</div>'}
+    </div>`).join('') : (selectedHoliday ? '' : '<div class="empty" style="padding:12px 0;">برای این روز کاری ثبت نشده.</div>')}
   `;
 }
 function calendarGoToday() {
@@ -962,6 +978,45 @@ async function loadAttendanceAll() {
     <td>${formatDuration(a.check_in, a.check_out)}</td>
   </tr>`).join('');
 }
+
+const HOLIDAYS_1405 = {
+  '1405/01/01':'نوروز؛ تعطیل رسمی و عید فطر',
+  '1405/01/02':'عید نوروز؛ تعطیل رسمی',
+  '1405/01/03':'عید نوروز؛ تعطیل رسمی',
+  '1405/01/04':'عید نوروز؛ تعطیل رسمی',
+  '1405/01/12':'روز جمهوری اسلامی ایران؛ تعطیل رسمی',
+  '1405/01/13':'روز طبیعت (سیزده‌به‌در)؛ تعطیل رسمی',
+  '1405/01/24':'شهادت امام جعفر صادق (ع)؛ تعطیل رسمی',
+  '1405/03/03':'شهادت امام محمد باقر (ع)؛ تعطیل رسمی',
+  '1405/03/06':'عید قربان؛ تعطیل رسمی',
+  '1405/03/14':'رحلت امام خمینی و عید غدیر؛ تعطیل رسمی',
+  '1405/03/15':'قیام ۱۵ خرداد؛ تعطیل رسمی',
+  '1405/04/03':'تاسوعای حسینی؛ تعطیل رسمی',
+  '1405/04/04':'عاشورای حسینی؛ تعطیل رسمی',
+  '1405/04/13':'تعطیلی ویژه استان تهران',
+  '1405/04/14':'تعطیلی ویژه کل کشور',
+  '1405/04/15':'تعطیلی ویژه سراسری کشور',
+  '1405/04/16':'تعطیلی ویژه استان تهران',
+  '1405/05/13':'اربعین حسینی؛ تعطیل رسمی',
+  '1405/05/21':'رحلت پیامبر اکرم (ص) و شهادت امام حسن مجتبی (ع)؛ تعطیل رسمی',
+  '1405/05/22':'شهادت امام رضا (ع)؛ تعطیل رسمی',
+  '1405/05/30':'شهادت امام حسن عسکری (ع)؛ تعطیل رسمی',
+  '1405/06/08':'ولادت پیامبر اکرم (ص) و ولادت امام جعفر صادق (ع)؛ تعطیل رسمی',
+  '1405/08/22':'شهادت حضرت فاطمه زهرا (س)؛ تعطیل رسمی',
+  '1405/10/02':'ولادت امام علی (ع)؛ روز پدر؛ تعطیل رسمی',
+  '1405/10/16':'مبعث پیامبر اکرم (ص)؛ تعطیل رسمی',
+  '1405/11/04':'ولادت امام زمان (عج) و نیمه شعبان؛ تعطیل رسمی',
+  '1405/11/22':'پیروزی انقلاب اسلامی؛ تعطیل رسمی',
+  '1405/12/09':'شهادت امام علی (ع)؛ تعطیل رسمی',
+  '1405/12/19':'عید فطر؛ تعطیل رسمی',
+  '1405/12/20':'تعطیل عید فطر؛ تعطیل رسمی',
+  '1405/12/29':'ملی شدن صنعت نفت؛ تعطیل رسمی'
+};
+
+function holidayFor(jy,jm,jd) {
+  return HOLIDAYS_1405[`${jy}/${String(jm).padStart(2,'0')}/${String(jd).padStart(2,'0')}`] || null;
+}
+
 const JALALI_MONTHS = ['فروردین','اردیبهشت','خرداد','تیر','مرداد','شهریور','مهر','آبان','آذر','دی','بهمن','اسفند'];
 function fillJalaliSelectors() {
   const now = new Date(); const cur = JalaaliLib.toJalaali(now.getFullYear(), now.getMonth() + 1, now.getDate()); const baseJY = cur.jy;
