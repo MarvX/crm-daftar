@@ -678,22 +678,130 @@ function updateDarkButton() {
 }
 function initDarkMode(){ if(localStorage.getItem('dast-dark')==='1') document.body.classList.add('dark'); updateDarkButton(); }
 
-function renderCalendar() {
-  const box=document.getElementById('section-calendar');
-  const today=new Date().toISOString().slice(0,10);
-  const items=[];
-  (personalTasks||[]).forEach(t=>{ if(t.due_date) items.push({date:t.due_date,title:t.title,type:'کار شخصی',meta:t.status==='done'?'انجام‌شده':statusLabel(t.status).replace(/<[^>]+>/g,'')}); });
-  if (currentProfile && currentProfile.is_admin) {
-    (erpTasks||[]).forEach(t=>{ if(t.due_date) items.push({date:t.due_date,title:t.title,type:'وظیفه دفتر',meta:t.responsible_member_name||''}); });
-    (interactions||[]).forEach(i=>{ if(i.next_follow_up_date) items.push({date:i.next_follow_up_date,title:i.related_name||'پیگیری',type:i.type||'پیگیری',meta:i.note||''}); });
-    (tenders||[]).forEach(t=>{ if(t.event_date) items.push({date:t.event_date,title:t.title,type:t.type||'رویداد',meta:t.issuing_body||''}); });
-    (contracts||[]).forEach(c=>{ (contractStagesMap[c.id]||[]).forEach(s=>{if(s.due_date) items.push({date:s.due_date,title:(c.project_title||'قرارداد')+' — '+s.title,type:'سررسید پرداخت',meta:(s.amount||0).toLocaleString('fa-IR')+' تومان'});}); });
-  }
-  items.sort((a,b)=>String(a.date).localeCompare(String(b.date)));
-  const upcoming=items.filter(x=>x.date>=today).slice(0,40);
-  box.innerHTML=`<div class="card"><div class="row-top"><div><h2>📅 تقویم دفتر</h2><div style="font-size:12px;color:var(--muted)">کارهای نزدیک، پیگیری‌ها و سررسیدها در یک نگاه</div></div><button class="btn small secondary" onclick="switchSection('tasks')">+ رفتن به کارها</button></div>
-  <div class="calendar-list">${upcoming.length?upcoming.map(x=>`<div class="calendar-item" style="display:flex;gap:14px;align-items:center;padding:12px 4px;border-bottom:1px solid var(--border)"><div style="min-width:90px;font-weight:700;color:var(--navy-light)">${fmtDate(x.date)}</div><div><strong>${escapeHtml(x.title)}</strong><div style="color:var(--muted);font-size:11px;margin-top:3px">${escapeHtml(x.type)} · ${escapeHtml(x.meta)}</div></div></div>`).join(''):'<div class="empty">موردی برای روزهای آینده ثبت نشده.</div>'}</div></div>`;
+let calendarJY = null, calendarJM = null, calendarSelectedDay = null;
+
+function calendarMonthLength(jy, jm) {
+  return JalaaliLib.jalaaliMonthLength(jy, jm);
 }
+function calendarMonthTitle(jy, jm) { return JALALI_MONTHS[jm - 1] + ' ' + toFaDigits(jy); }
+function calendarDateKey(jy, jm, jd) {
+  const g = JalaaliLib.toGregorian(jy, jm, jd);
+  return `${g.gy}-${String(g.gm).padStart(2,'0')}-${String(g.gd).padStart(2,'0')}`;
+}
+function calendarTodayJalali() {
+  const now = new Date();
+  return JalaaliLib.toJalaali(now.getFullYear(), now.getMonth()+1, now.getDate());
+}
+function calendarPrevMonth() {
+  if (calendarJM === 1) { calendarJM = 12; calendarJY--; } else calendarJM--;
+  calendarSelectedDay = 1;
+  renderCalendar();
+}
+function calendarNextMonth() {
+  if (calendarJM === 12) { calendarJM = 1; calendarJY++; } else calendarJM++;
+  calendarSelectedDay = 1;
+  renderCalendar();
+}
+function selectCalendarDay(day) {
+  calendarSelectedDay = day;
+  renderCalendar();
+}
+
+async function renderCalendar() {
+  const box = document.getElementById('section-calendar');
+  if (!box) return;
+
+  const today = calendarTodayJalali();
+  if (!calendarJY || !calendarJM) {
+    calendarJY = today.jy;
+    calendarJM = today.jm;
+    calendarSelectedDay = today.jd;
+  }
+
+  box.innerHTML = `<div class="card">
+    <div class="row-top" style="margin-bottom:10px;">
+      <div>
+        <h2 style="margin:0;">📅 تقویم دفتر</h2>
+        <div style="font-size:12px;color:var(--muted);margin-top:4px;">کارها و اتفاقات هر روز را یکجا ببین</div>
+      </div>
+      <div class="row" style="margin:0;">
+        <button class="btn small secondary" onclick="calendarPrevMonth()">‹ ماه قبل</button>
+        <button class="btn small" onclick="calendarGoToday()">امروز</button>
+        <button class="btn small secondary" onclick="calendarNextMonth()">ماه بعد ›</button>
+      </div>
+    </div>
+    <div id="calendar-title" style="text-align:center;font-weight:800;font-size:18px;margin:14px 0;"></div>
+    <div class="calendar-weekdays">
+      <div>شنبه</div><div>یکشنبه</div><div>دوشنبه</div><div>سه‌شنبه</div><div>چهارشنبه</div><div>پنجشنبه</div><div>جمعه</div>
+    </div>
+    <div id="calendar-grid" class="calendar-grid"></div>
+    <div id="calendar-day-details" style="margin-top:18px;"></div>
+  </div>`;
+
+  const [myRes] = await Promise.all([
+    sb.from('personal_tasks').select('*').eq('user_id', currentUser.id).order('due_date', { ascending:true })
+  ]);
+  const myTasksNow = myRes.data || [];
+  personalTasks = myTasksNow;
+
+  const items = [];
+  myTasksNow.forEach(t => {
+    if (t.due_date) items.push({date:t.due_date,title:t.title,type:'کار من',meta:t.status==='done'?'انجام‌شده':'',status:t.status});
+  });
+
+  if (currentProfile && currentProfile.is_admin) {
+    (erpTasks||[]).forEach(t => { if(t.due_date) items.push({date:t.due_date,title:t.title,type:'وظیفه دفتر',meta:t.responsible_member_name||'',status:t.status}); });
+    (interactions||[]).forEach(i => { if(i.next_follow_up_date) items.push({date:i.next_follow_up_date,title:i.related_name||'پیگیری',type:i.type||'پیگیری',meta:i.note||''}); });
+    (tenders||[]).forEach(t => { if(t.event_date) items.push({date:t.event_date,title:t.title,type:t.type||'رویداد',meta:t.issuing_body||''}); });
+    (contracts||[]).forEach(c => { (contractStagesMap[c.id]||[]).forEach(s => { if(s.due_date) items.push({date:s.due_date,title:(c.project_title||'قرارداد')+' — '+s.title,type:'سررسید پرداخت',meta:(s.amount||0).toLocaleString('fa-IR')+' تومان'}); }); });
+    (tasks||[]).forEach(t => { if(t.date) items.push({date:t.date,title:t.title,type:'کار دفتر',meta:''}); });
+  }
+
+  const dayItems = {};
+  items.forEach(item => { (dayItems[item.date] ||= []).push(item); });
+
+  const daysInMonth = calendarMonthLength(calendarJY, calendarJM);
+  const firstG = JalaaliLib.toGregorian(calendarJY, calendarJM, 1);
+  const firstWeekday = (new Date(firstG.gy, firstG.gm-1, firstG.gd).getDay() + 1) % 7;
+  const totalCells = Math.ceil((firstWeekday + daysInMonth) / 7) * 7;
+
+  document.getElementById('calendar-title').innerText = calendarMonthTitle(calendarJY, calendarJM);
+  const grid = document.getElementById('calendar-grid');
+  let html = '';
+  for (let cell=0; cell<totalCells; cell++) {
+    const day = cell-firstWeekday+1;
+    if (day<1 || day>daysInMonth) {
+      html += '<div class="calendar-day empty-cell"></div>';
+      continue;
+    }
+    const key = calendarDateKey(calendarJY, calendarJM, day);
+    const count = (dayItems[key]||[]).length;
+    const isToday = today.jy===calendarJY && today.jm===calendarJM && today.jd===day;
+    const isSelected = calendarSelectedDay===day;
+    html += `<button class="calendar-day ${isToday?'today ':''}${isSelected?'selected':''}" onclick="selectCalendarDay(${day})">
+      <span class="calendar-day-number">${toFaDigits(day)}</span>
+      ${count ? `<span class="calendar-day-count">${toFaDigits(count)}</span>` : '<span class="calendar-day-dot"></span>'}
+    </button>`;
+  }
+  grid.innerHTML = html;
+
+  const selectedKey = calendarDateKey(calendarJY, calendarJM, calendarSelectedDay);
+  const selected = dayItems[selectedKey] || [];
+  const details = document.getElementById('calendar-day-details');
+  details.innerHTML = `
+    <div style="font-size:14px;font-weight:800;margin-bottom:10px;">کارهای ${toFaDigits(calendarSelectedDay)} ${JALALI_MONTHS[calendarJM-1]}</div>
+    ${selected.length ? selected.map(x => `<div class="calendar-event-row">
+      <div class="calendar-event-type">${escapeHtml(x.type)}</div>
+      <div style="flex:1"><strong>${escapeHtml(x.title)}</strong><div style="font-size:11px;color:var(--muted);margin-top:3px">${escapeHtml(x.meta||'')}</div></div>
+    </div>`).join('') : '<div class="empty" style="padding:12px 0;">برای این روز کاری ثبت نشده.</div>'}
+  `;
+}
+function calendarGoToday() {
+  const t=calendarTodayJalali();
+  calendarJY=t.jy; calendarJM=t.jm; calendarSelectedDay=t.jd;
+  renderCalendar();
+}
+
 
 
 async function openAttendanceQR() {
