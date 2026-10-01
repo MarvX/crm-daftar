@@ -754,7 +754,6 @@ async function renderCalendar() {
     (interactions||[]).forEach(i => { if(i.next_follow_up_date) items.push({date:i.next_follow_up_date,title:i.related_name||'پیگیری',type:i.type||'پیگیری',meta:i.note||''}); });
     (tenders||[]).forEach(t => { if(t.event_date) items.push({date:t.event_date,title:t.title,type:t.type||'رویداد',meta:t.issuing_body||''}); });
     (contracts||[]).forEach(c => { (contractStagesMap[c.id]||[]).forEach(s => { if(s.due_date) items.push({date:s.due_date,title:(c.project_title||'قرارداد')+' — '+s.title,type:'سررسید پرداخت',meta:(s.amount||0).toLocaleString('fa-IR')+' تومان'}); }); });
-    (tasks||[]).forEach(t => { if(t.date) items.push({date:t.date,title:t.title,type:'کار دفتر',meta:''}); });
   }
 
   const dayItems = {};
