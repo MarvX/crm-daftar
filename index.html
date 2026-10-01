@@ -81,6 +81,14 @@
   .jdate { display: inline-flex; gap: 4px; flex: 1; min-width: 230px; }
   .row .jdate select, .modal .jdate select, .jdate select { flex: 1; min-width: 0; width: auto; padding: 9px 4px; }
   .modal .jdate { display: flex; width: 100%; }
+
+  body.dark { --bg:#11121a; --surface:#1a1b26; --text:#f1f1f5; --muted:#a6a7b5; --border:#30313f; --navy:#4b43a0; --navy-light:#8178dc; }
+  body.dark input, body.dark select, body.dark textarea { background:#151621; color:var(--text); }
+  body.dark nav { background:var(--surface); }
+  body.dark .lead-card, body.dark .stage-col { background:#151621; }
+  body.dark .status-new { background:#1e3156; color:#9fc1ff; }
+  body.dark .status-progress { background:#4a3c13; color:#f6d77a; }
+  body.dark .status-done { background:#123d2c; color:#8de0b7; }
 </style>
 </head>
 <body>
