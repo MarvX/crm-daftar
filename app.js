@@ -609,16 +609,23 @@ function toggleSidebar() {
 }
 
 function updateHeaderContext(id = activeSectionId) {
+  const label = id === 'profile' ? 'پروفایل من' : (SECTION_TITLES[id] || 'داشبورد');
   const title = document.getElementById('header-page-title');
   const date = document.getElementById('header-page-date');
-  if (title) title.textContent = id === 'profile' ? 'پروفایل من' : (SECTION_TITLES[id] || 'داشبورد');
+  const contentTitle = document.getElementById('content-page-title');
+  const contentDate = document.getElementById('content-page-date');
+  if (title) title.textContent = label;
+  if (contentTitle) contentTitle.textContent = label;
   if (date) {
     const now = new Date();
     try {
       const j = JalaaliLib.toJalaali(now.getFullYear(), now.getMonth() + 1, now.getDate());
-      date.textContent = `${toFaDigits(j.jd)} ${JALALI_MONTHS[j.jm - 1]} ${toFaDigits(j.jy)}`;
+      const dateLabel = `${toFaDigits(j.jd)} ${JALALI_MONTHS[j.jm - 1]} ${toFaDigits(j.jy)}`;
+      date.textContent = dateLabel;
+      if (contentDate) contentDate.textContent = dateLabel;
     } catch (_) {
       date.textContent = '';
+      if (contentDate) contentDate.textContent = '';
     }
   }
 }
@@ -905,7 +912,7 @@ function renderProfile() {
           <label>واحد / دپارتمان<input id="profile-department" value="${escapeHtml(p.department || '')}" maxlength="80" placeholder="مثلاً طراحی معماری"></label>
         </div>
         <label>سمت <input value="${escapeHtml(p.role_title || (p.is_admin ? 'مدیر دفتر' : 'عضو تیم'))}" disabled></label>
-        <label>معرفی کوتاه<textarea id="profile-bio" rows="3" maxlength="240" placeholder="مثلاً معمار، مدل‌ساز و مسئول پروژه‌های...">${escapeHtml(p.bio || '')}</textarea></label>
+        <label class="profile-bio-field">معرفی کوتاه<textarea id="profile-bio" rows="3" maxlength="240" placeholder="مثلاً معمار، مدل‌ساز و مسئول پروژه‌های...">${escapeHtml(p.bio || '')}</textarea></label>
         <div class="profile-avatar-editor">
           <div><strong>آواتار</strong><div class="sr-meta">یک آواتار آماده انتخاب کن یا لینک عکس خودت را وارد کن.</div></div>
           <div class="profile-avatar-preview" id="profile-avatar-preview">${profileAvatarMarkup(p,'lg')}</div>
@@ -916,6 +923,7 @@ function renderProfile() {
         <div class="modal-actions"><button class="btn" onclick="saveMyProfile()">ذخیره تغییرات</button></div>
       </div>
     </div>
+    <div class="profile-settings-divider"><span>⚙️ تنظیمات پنل</span><small>ظاهر، اعلان، امنیت و اتصال‌ها</small></div>
     <div class="profile-settings-grid">
       <div class="card">
         <div class="profile-setting-head"><span class="profile-setting-icon">🎨</span><div><strong>ظاهر پنل</strong><div class="sr-meta">حالت روشن یا تیره</div></div></div>
@@ -1791,6 +1799,26 @@ function enhanceDashboard(){
   }
 }
 // ================= داشبورد =================
+function dashboardGreeting(context = '') {
+  const firstName = String(currentProfile?.full_name || currentUser?.email || 'دوست عزیز').trim().split(' ')[0] || 'دوست عزیز';
+  const name = escapeHtml(firstName);
+  const role = currentProfile?.role_title || (currentProfile?.is_admin ? 'مدیر دفتر' : 'عضو تیم');
+  return `
+    <section class="dashboard-greeting">
+      <div class="dashboard-greeting-art" aria-hidden="true">
+        <span class="greeting-sticker sticker-one">👋</span>
+        <span class="greeting-sticker sticker-two">📐</span>
+        <span class="greeting-sticker sticker-three">☕</span>
+        <span class="greeting-sticker sticker-four">✨</span>
+      </div>
+      <div class="dashboard-greeting-copy">
+        <div class="dashboard-greeting-kicker">صبح بخیر، ${name} <span>🌤️</span></div>
+        <h2>خوش اومدی به دَست استودیو</h2>
+        <p>${context} <span class="greeting-inline-emoji">🚀</span></p>
+      </div>
+      <div class="dashboard-greeting-role"><span>سمت</span><strong>${escapeHtml(role)}</strong></div>
+    </section>`;
+}
 function renderPersonalDashboard() {
   const today = new Date().toISOString().slice(0,10);
   const all = personalTasks || [];
@@ -1799,6 +1827,7 @@ function renderPersonalDashboard() {
   const todayTasks = active.filter(t => t.due_date && String(t.due_date).slice(0,10) === today);
   const high = active.filter(t => t.priority === 'بالا');
   return `
+    ${dashboardGreeting('کارهای مهمت، حضور امروز و ددلاین‌های نزدیکت اینجا جمع شده‌اند.')}
     <div class="grid-stats">
       <div class="stat"><div class="num">${active.length}</div><div class="label">کار باز</div></div>
       <div class="stat"><div class="num" style="color:var(--danger);">${overdue.length}</div><div class="label">عقب‌افتاده</div></div>
@@ -1843,6 +1872,7 @@ function renderDashboard() {
     .sort((a,b) => new Date(a.next_follow_up_date)-new Date(b.next_follow_up_date)).slice(0,6);
 
   return `
+    ${dashboardGreeting('سرنخ‌ها، پروژه‌ها، قراردادها و وضعیت تیم را از همین‌جا زیر نظر داشته باش.')}
     <div class="grid-stats">
       <div class="stat"><div class="num">${activeLeads}</div><div class="label">سرنخ فعال</div></div>
       <div class="stat"><div class="num">${clients.length}</div><div class="label">کارفرما</div></div>
