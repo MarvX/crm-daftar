@@ -509,9 +509,7 @@ const NAV_ITEMS = [
   { id: 'clients', label: 'کارفرمایان', adminOnly: true },
   { id: 'projects', label: 'پروژه‌ها', adminOnly: true },
   { id: 'contracts', label: 'قراردادها و مطالبات', adminOnly: true },
-  { id: 'office-tasks', label: 'کارهای دفتر', adminOnly: true },
   { id: 'team', label: 'تیم', adminOnly: true },
-  { id: 'erp-tasks', label: 'وظایف', adminOnly: true },
   { id: 'costs', label: 'هزینه‌های ثابت', adminOnly: true },
   { id: 'tenders', label: 'مناقصه / مسابقه', adminOnly: true },
 ];
@@ -1156,9 +1154,13 @@ function renderTasksSection() {
       <details style="margin-top:12px;"><summary style="cursor:pointer;color:var(--muted);font-size:12px;">نمایش جدول کامل</summary><div class="table-wrap"><table><thead><tr><th>عنوان</th><th>اولویت</th><th>ددلاین</th><th>وضعیت</th><th></th></tr></thead><tbody id="mytasks-table"></tbody></table></div></details>
     </div>
     ${teamBlock}
+    <div class="card task-unified-card">
+      <div class="row-top"><div><h2>🧩 منابع کاری دفتر</h2><div style="font-size:11px;color:var(--muted)">همه مدل‌های قدیمی کار از اینجا یکپارچه دیده می‌شوند؛ برای ویرایش وارد منبع مربوط شو.</div></div></div>
+      <div id="task-unified-overview" class="task-source-grid"></div>
+    </div>
   `;
   loadMyTasks();
-  if (currentProfile.is_admin) { fillEmployeeSelect(); loadTeamTasks(); }
+  if (currentProfile.is_admin) { fillEmployeeSelect(); loadTeamTasks(); loadUnifiedTaskOverview(); }
 }
 
 const CAL_MSG = {
@@ -1635,6 +1637,26 @@ async function addStage(contractId) {
   refreshAllErpData();
 }
 async function markStageReceived(stageId) { await sb.from('contract_stages').update({ received: true }).eq('id', stageId); refreshAllErpData(); }
+
+async function loadUnifiedTaskOverview() {
+  if (!currentProfile?.is_admin) return;
+  const box = document.getElementById('task-unified-overview');
+  if (!box) return;
+  const { data: officeRows, error } = await sb.from('tasks').select('id,status');
+  const office = !error ? (officeRows || []) : [];
+  const personalOpen = (teamPersonalTasks || []).filter(t => t.status !== 'done').length;
+  const personalAll = (teamPersonalTasks || []).length;
+  const erpOpen = (erpTasks || []).filter(t => t.status !== 'تکمیل‌شده').length;
+  const erpAll = (erpTasks || []).length;
+  const officeOpen = office.filter(t => t.status !== 'done').length;
+  const officeAll = office.length;
+  const sources = [
+    { icon:'👥', title:'کارهای تیم', open:personalOpen, total:personalAll, section:'tasks', hint:'مسئول مشخص + ددلاین + اولویت' },
+    { icon:'📌', title:'وظایف مدیریتی', open:erpOpen, total:erpAll, section:'erp-tasks', hint:'وظایف دفتر و تأیید مؤسس' },
+    { icon:'🏷️', title:'کارهای مرتبط با کارفرما', open:officeOpen, total:officeAll, section:'office-tasks', hint:'کارهای قدیمی متصل به کارفرما' }
+  ];
+  box.innerHTML = sources.map(s => '<div class="task-source-card"><div class="task-source-icon">'+s.icon+'</div><div class="task-source-copy"><strong>'+s.title+'</strong><span>'+toFaDigits(s.open)+' باز · '+toFaDigits(s.total)+' کل</span><small>'+s.hint+'</small></div><button class="btn small secondary" onclick="switchSection(\''+s.section+'\')">باز کردن</button></div>').join('');
+}
 
 // ================= کارهای دفتر (CRM tasks + کلندر) =================
 function renderOfficeTasks() {
