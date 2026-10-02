@@ -78,8 +78,6 @@
   .jdate { display: inline-flex; gap: 4px; flex: 1; min-width: 230px; }
   .row .jdate select, .modal .jdate select, .jdate select { flex: 1; min-width: 0; width: auto; padding: 9px 4px; }
   .modal .jdate { display: flex; width: 100%; }
-
-  /* ===== LOGIN ===== */
   #login-screen{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-content:center;padding:calc(24px + env(safe-area-inset-top)) 16px calc(24px + env(safe-area-inset-bottom));background:radial-gradient(1100px 560px at 100% 0%,rgba(74,65,147,.16),transparent 60%),var(--bg)}
   .login-shell{width:100%;max-width:880px;display:grid;grid-template-columns:1fr 1fr;background:var(--surface);border:1px solid var(--border);border-radius:20px;overflow:hidden;box-shadow:0 20px 60px rgba(30,25,80,.12);animation:modalIn .3s cubic-bezier(.2,.8,.2,1) both}
   .login-brand{background:linear-gradient(160deg,var(--navy) 0%,var(--navy-light) 100%);color:#fff;padding:44px 36px;display:flex;flex-direction:column;justify-content:center;gap:14px}
@@ -109,27 +107,8 @@
   body.dark .login-card input{border-color:#3b3c4d}
   body.dark .pw-toggle{background:rgba(129,120,220,.18);color:#c9c4ff}
   body.dark .pw-toggle:hover{background:rgba(129,120,220,.28)}
-  @media(max-width:720px){
-    .login-shell{grid-template-columns:1fr;max-width:420px}
-    .login-brand{padding:28px 24px;gap:8px}
-    .login-brand img{width:44px;height:44px}
-    .login-brand h2{font-size:20px}
-    .login-points{display:none}
-    .login-card{padding:28px 24px}
-  }
-  /* گوشی‌های کوتاه (مثل آیفون SE): دکمه‌ی ورود بدون اسکرول دیده شود */
-  @media(max-width:720px) and (max-height:700px){
-    #login-screen{align-items:flex-start;padding-top:calc(12px + env(safe-area-inset-top));padding-bottom:12px}
-    .login-brand{flex-direction:row;align-items:center;padding:16px 20px;gap:12px}
-    .login-brand img{width:36px;height:36px;border-radius:10px}
-    .login-brand h2{font-size:18px}
-    .login-brand p{display:none}
-    .login-card{padding:20px}
-    .login-card h1{font-size:19px}
-    .login-sub{margin-bottom:14px}
-    .login-card input{padding:10px 12px;margin-bottom:12px}
-  }
-
+  @media(max-width:720px){.login-shell{grid-template-columns:1fr;max-width:420px}.login-brand{padding:28px 24px;gap:8px}.login-brand img{width:44px;height:44px}.login-brand h2{font-size:20px}.login-points{display:none}.login-card{padding:28px 24px}}
+  @media(max-width:720px) and (max-height:700px){#login-screen{align-items:flex-start;padding-top:calc(12px + env(safe-area-inset-top));padding-bottom:12px}.login-brand{flex-direction:row;align-items:center;padding:16px 20px;gap:12px}.login-brand img{width:36px;height:36px;border-radius:10px}.login-brand h2{font-size:18px}.login-brand p{display:none}.login-card{padding:20px}.login-card h1{font-size:19px}.login-sub{margin-bottom:14px}.login-card input{padding:10px 12px;margin-bottom:12px}}
   body.dark { --bg:#11121a; --surface:#1a1b26; --text:#f1f1f5; --muted:#a6a7b5; --border:#30313f; --navy:#4b43a0; --navy-light:#8178dc; }
   body.dark input, body.dark select, body.dark textarea { background:#151621; color:var(--text); }
   body.dark nav { background:var(--surface); }
@@ -137,7 +116,6 @@
   body.dark .status-new { background:#1e3156; color:#9fc1ff; }
   body.dark .status-progress { background:#4a3c13; color:#f6d77a; }
   body.dark .status-done { background:#123d2c; color:#8de0b7; }
-
   .calendar-weekdays,.calendar-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px}
   .calendar-weekdays{margin-bottom:6px;color:var(--muted);font-size:11px;text-align:center;font-weight:700}
   .calendar-day{min-height:72px;border:1px solid var(--border);border-radius:10px;background:var(--bg);color:var(--text);font-family:inherit;cursor:pointer;padding:8px;display:flex;flex-direction:column;align-items:flex-start;justify-content:space-between;text-align:right;transition:.15s}
@@ -151,226 +129,20 @@
   .calendar-event-row{display:flex;gap:10px;align-items:flex-start;border:1px solid var(--border);border-radius:10px;padding:10px;margin-bottom:7px;background:var(--bg)}
   .calendar-event-type{font-size:10px;color:var(--muted);min-width:72px}
   @media(max-width:700px){.calendar-day{min-height:58px;padding:6px}.calendar-weekdays{font-size:9px}.calendar-day-number{font-size:13px}.calendar-day-count{min-width:19px;height:19px;font-size:10px}}
-
-  .calendar-day.holiday{border-color:#c0392b;background:rgba(192,57,43,.08)}
-  .calendar-day.holiday .calendar-day-number{color:#c0392b}
-  .calendar-day.weekend{background:rgba(120,120,140,.08)}
-  .calendar-day.holiday.weekend{background:rgba(192,57,43,.10)}
-  .calendar-holiday-mark{font-size:9px;font-weight:800;color:#c0392b}
-  .calendar-holiday-detail{background:rgba(192,57,43,.09);border:1px solid rgba(192,57,43,.25);color:#c0392b;border-radius:9px;padding:10px;margin-bottom:10px;font-size:12px;font-weight:700}
-  body.dark .calendar-day.holiday{background:rgba(192,57,43,.16);border-color:#e06b5c}
-  body.dark .calendar-day.holiday .calendar-day-number,body.dark .calendar-holiday-mark,body.dark .calendar-holiday-detail{color:#ff8b7d}
-
-  /* ===== DAST UX / MOTION ===== */
-  html{scroll-behavior:smooth}
-  body{overflow-x:hidden}
-  #app-root{animation:appReveal .35s ease-out both}
-  main>div:not(.hidden){animation:sectionIn .22s ease-out both}
-  .card,.stat,.stage-col,.lead-card{transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease}
-  .card:hover,.stat:hover{transform:translateY(-1px);box-shadow:0 6px 22px rgba(30,25,80,.07)}
-  .lead-card:hover{transform:translateY(-2px);box-shadow:0 5px 16px rgba(30,25,80,.08)}
-  button,.btn,input,select,textarea{transition:transform .12s ease,box-shadow .15s ease,border-color .15s ease,background-color .15s ease}
-  button:active,.btn:active{transform:scale(.97)}
-  .btn:hover{box-shadow:0 4px 12px rgba(52,45,115,.16)}
-  nav button{transition:background-color .18s ease,color .18s ease,border-color .18s ease,transform .15s ease}
-  nav button:hover{transform:translateY(-1px)}
-  nav button.active{box-shadow:0 3px 12px rgba(52,45,115,.16)}
-  tr{transition:background-color .15s ease}
-  tbody tr:hover{background:rgba(52,45,115,.035)}
-  .stat .num{animation:countIn .35s ease-out both}
-  .overlay{animation:overlayIn .18s ease-out both;backdrop-filter:blur(2px)}
-  .modal{animation:modalIn .22s cubic-bezier(.2,.8,.2,1) both}
-  .search-result{animation:resultIn .18s ease-out both}
-  .quick-action{display:flex;align-items:center;gap:10px;text-align:right;padding:12px;border:1px solid var(--border);border-radius:12px;background:var(--surface);cursor:pointer;color:var(--text);font-family:inherit}
-  .quick-action:hover{transform:translateY(-2px);border-color:var(--navy-light);box-shadow:0 6px 18px rgba(30,25,80,.08)}
-  .quick-action .qa-icon{width:38px;height:38px;border-radius:10px;background:rgba(52,45,115,.1);display:grid;place-items:center;font-size:18px;flex:none}
-  .quick-actions{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
-  .task-overdue{border-inline-start:3px solid var(--danger)!important}
-  .task-soon{border-inline-start:3px solid var(--warn)!important}
-  .deadline-badge{font-size:10px;font-weight:800;padding:3px 7px;border-radius:999px;background:rgba(192,57,43,.1);color:var(--danger)}
-  .task-board{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:8px}
-  .task-board-column{background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:10px;min-height:180px}
-  .task-board-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:9px}
-  .task-board-head h3{font-size:13px;margin:0}
-  .task-board-head span{font-size:11px;background:var(--surface);border:1px solid var(--border);border-radius:999px;padding:3px 7px}
-  .task-kanban-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:10px;margin-bottom:8px;cursor:grab;transition:transform .16s,box-shadow .16s}
-  .task-kanban-card:hover{transform:translateY(-2px);box-shadow:0 6px 18px rgba(0,0,0,.07)}
-  .task-kanban-top{display:flex;gap:7px;justify-content:space-between;align-items:flex-start}
-  .task-kanban-top strong{font-size:12px;line-height:1.7}
-  .task-kanban-meta{font-size:10px;color:var(--muted);margin-top:7px}
-  .task-kanban-actions{display:flex;gap:5px;flex-wrap:wrap;margin-top:8px}
-  .task-kanban-actions .btn{font-size:10px;padding:4px 7px}
-  .team-work-row{padding:10px 0;border-bottom:1px solid var(--border)}
-  .team-work-row:last-child{border-bottom:0}
-  .team-work-person{display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:7px}
-  .team-work-person span{font-size:10px;color:var(--muted)}
-  .team-work-tasks{display:flex;gap:6px;flex-wrap:wrap}
-  .team-task-chip{font-size:10px;padding:5px 8px;border:1px solid var(--border);border-radius:8px;background:var(--bg)}
-  @media(max-width:800px){.task-board{grid-template-columns:1fr}.task-board-column{min-height:120px}}
-  .priority-badge{display:inline-flex;align-items:center;padding:3px 8px;border-radius:999px;font-size:10px;font-weight:800;white-space:nowrap}
-  .priority-high{background:rgba(192,57,43,.12);color:var(--danger)}
-  .priority-mid{background:rgba(184,134,11,.12);color:var(--warn)}
-  .priority-low{background:rgba(31,138,90,.12);color:var(--success)}
-  .task-due{font-size:11px;font-weight:700}
-  .task-due.overdue{color:var(--danger)}
-  .task-due.today{color:var(--warn)}
-  .task-due.upcoming{color:var(--muted)}
-  .task-due.done{color:var(--success)}
-  .task-no-date{font-size:11px;color:var(--muted)}
-  .task-summary{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
-  .task-summary-chip{font-size:11px;padding:4px 8px;border-radius:999px;background:var(--bg);border:1px solid var(--border)}
-  .table-wrap{width:100%;overflow-x:auto}
-  .notification-modal{max-width:620px}
-  .notification-item{width:100%;display:flex;align-items:flex-start;gap:10px;text-align:right;border:1px solid var(--border);border-radius:10px;padding:11px;margin-bottom:7px;background:var(--surface);color:var(--text);font-family:inherit;cursor:pointer}
-  .notification-item:hover{border-color:var(--navy-light);transform:translateY(-1px)}
-  .notification-item.unread{border-inline-start:3px solid var(--navy-light);background:rgba(52,45,115,.045)}
-  .notification-icon{width:34px;height:34px;border-radius:9px;background:rgba(52,45,115,.1);display:grid;place-items:center;flex:none}
-  .notification-copy{display:flex;flex-direction:column;gap:2px;min-width:0}
-  .notification-copy>span{font-size:12px;color:var(--muted);line-height:1.7}
-  .notification-copy small{font-size:10px;color:var(--muted)}
-  .activity-row{display:flex;gap:10px;align-items:flex-start;padding:9px 0;border-bottom:1px solid var(--border)}
-  .activity-row:last-child{border-bottom:0}
-  .activity-dot{width:8px;height:8px;border-radius:50%;background:var(--navy-light);margin-top:7px;flex:none}
-  .notification-bell{position:relative;min-width:42px;padding-inline:10px!important}
-  .notification-bell .notif-count{position:absolute;top:-5px;left:-5px;min-width:19px;height:19px;padding:0 4px;border-radius:999px;background:var(--danger);color:#fff;font-size:10px;font-weight:800;display:grid;place-items:center;border:2px solid var(--navy)}
-  .deadline-badge.soon{background:rgba(184,134,11,.12);color:var(--warn)}
-  #global-search-input{width:100%;font-size:15px;padding:12px 14px}
-  #global-search-results{max-height:52vh;overflow:auto;margin-top:10px}
-  .search-result{display:flex;align-items:center;gap:10px;padding:11px;border:1px solid var(--border);border-radius:10px;margin-bottom:7px;cursor:pointer;background:var(--surface)}
-  .search-result:hover{border-color:var(--navy-light);transform:translateY(-1px)}
-  .search-result .sr-icon{width:34px;height:34px;border-radius:9px;background:rgba(52,45,115,.1);display:grid;place-items:center}
-  .search-result .sr-meta{font-size:10px;color:var(--muted);margin-top:2px}
-  @keyframes appReveal{from{opacity:0}to{opacity:1}}
-  @keyframes sectionIn{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:none}}
-  @keyframes modalIn{from{opacity:0;transform:translateY(8px) scale(.98)}to{opacity:1;transform:none}}
-  @keyframes overlayIn{from{opacity:0}to{opacity:1}}
-  @keyframes countIn{from{opacity:0;transform:translateY(5px) scale(.96)}to{opacity:1;transform:none}}
-  @keyframes resultIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
-  @media(max-width:800px){.quick-actions{grid-template-columns:repeat(2,minmax(0,1fr))}}
-  @media(max-width:520px){
-    header{padding-inline:12px}
-    header>div:last-child{width:100%;display:flex;gap:6px;overflow-x:auto;padding-bottom:2px}
-    header>div:last-child .btn{white-space:nowrap}
-    main{padding-inline:10px}
-    .quick-actions{grid-template-columns:1fr 1fr}
-    .card{padding:13px}
-  }
-  @media(prefers-reduced-motion:reduce){
-    *,*::before,*::after{scroll-behavior:auto!important;animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important}
-  }
+  .calendar-day.holiday{border-color:#c0392b;background:rgba(192,57,43,.08)}.calendar-day.holiday .calendar-day-number{color:#c0392b}.calendar-day.weekend{background:rgba(120,120,140,.08)}.calendar-day.holiday.weekend{background:rgba(192,57,43,.10)}.calendar-holiday-mark{font-size:9px;font-weight:800;color:#c0392b}.calendar-holiday-detail{background:rgba(192,57,43,.09);border:1px solid rgba(192,57,43,.25);color:#c0392b;border-radius:9px;padding:10px;margin-bottom:10px;font-size:12px;font-weight:700}body.dark .calendar-day.holiday{background:rgba(192,57,43,.16);border-color:#e06b5c}body.dark .calendar-day.holiday .calendar-day-number,body.dark .calendar-holiday-mark,body.dark .calendar-holiday-detail{color:#ff8b7d}
+  html{scroll-behavior:smooth}body{overflow-x:hidden}#app-root{animation:appReveal .35s ease-out both}main>div:not(.hidden){animation:sectionIn .22s ease-out both}.card,.stat,.stage-col,.lead-card{transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease}.card:hover,.stat:hover{transform:translateY(-1px);box-shadow:0 6px 22px rgba(30,25,80,.07)}.lead-card:hover{transform:translateY(-2px);box-shadow:0 5px 16px rgba(30,25,80,.08)}button,.btn,input,select,textarea{transition:transform .12s ease,box-shadow .15s ease,border-color .15s ease,background-color .15s ease}button:active,.btn:active{transform:scale(.97)}.btn:hover{box-shadow:0 4px 12px rgba(52,45,115,.16)}nav button{transition:background-color .18s ease,color .18s ease,border-color .18s ease,transform .15s ease}nav button:hover{transform:translateY(-1px)}nav button.active{box-shadow:0 3px 12px rgba(52,45,115,.16)}tr{transition:background-color .15s ease}tbody tr:hover{background:rgba(52,45,115,.035)}.stat .num{animation:countIn .35s ease-out both}.overlay{animation:overlayIn .18s ease-out both;backdrop-filter:blur(2px)}.modal{animation:modalIn .22s cubic-bezier(.2,.8,.2,1) both}.search-result{animation:resultIn .18s ease-out both}.quick-action{display:flex;align-items:center;gap:10px;text-align:right;padding:12px;border:1px solid var(--border);border-radius:12px;background:var(--surface);cursor:pointer;color:var(--text);font-family:inherit}.quick-action:hover{transform:translateY(-2px);border-color:var(--navy-light);box-shadow:0 6px 18px rgba(30,25,80,.08)}.quick-action .qa-icon{width:38px;height:38px;border-radius:10px;background:rgba(52,45,115,.1);display:grid;place-items:center;font-size:18px;flex:none}.quick-actions{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}.task-overdue{border-inline-start:3px solid var(--danger)!important}.task-soon{border-inline-start:3px solid var(--warn)!important}.deadline-badge{font-size:10px;font-weight:800;padding:3px 7px;border-radius:999px;background:rgba(192,57,43,.1);color:var(--danger)}.task-board{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:8px}.task-board-column{background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:10px;min-height:180px}.task-board-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:9px}.task-board-head h3{font-size:13px;margin:0}.task-board-head span{font-size:11px;background:var(--surface);border:1px solid var(--border);border-radius:999px;padding:3px 7px}.task-kanban-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:10px;margin-bottom:8px;cursor:grab;transition:transform .16s,box-shadow .16s}.task-kanban-card:hover{transform:translateY(-2px);box-shadow:0 6px 18px rgba(0,0,0,.07)}.task-kanban-top{display:flex;gap:7px;justify-content:space-between;align-items:flex-start}.task-kanban-top strong{font-size:12px;line-height:1.7}.task-kanban-meta{font-size:10px;color:var(--muted);margin-top:7px}.task-kanban-actions{display:flex;gap:5px;flex-wrap:wrap;margin-top:8px}.task-kanban-actions .btn{font-size:10px;padding:4px 7px}.team-work-row{padding:10px 0;border-bottom:1px solid var(--border)}.team-work-row:last-child{border-bottom:0}.team-work-person{display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:7px}.team-work-person span{font-size:10px;color:var(--muted)}.team-work-tasks{display:flex;gap:6px;flex-wrap:wrap}.team-task-chip{font-size:10px;padding:5px 8px;border:1px solid var(--border);border-radius:8px;background:var(--bg)}@media(max-width:800px){.task-board{grid-template-columns:1fr}.task-board-column{min-height:120px}}.priority-badge{display:inline-flex;align-items:center;padding:3px 8px;border-radius:999px;font-size:10px;font-weight:800;white-space:nowrap}.priority-high{background:rgba(192,57,43,.12);color:var(--danger)}.priority-mid{background:rgba(184,134,11,.12);color:var(--warn)}.priority-low{background:rgba(31,138,90,.12);color:var(--success)}.task-due{font-size:11px;font-weight:700}.task-due.overdue{color:var(--danger)}.task-due.today{color:var(--warn)}.task-due.upcoming{color:var(--muted)}.task-due.done{color:var(--success)}.task-no-date{font-size:11px;color:var(--muted)}.task-summary{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}.task-summary-chip{font-size:11px;padding:4px 8px;border-radius:999px;background:var(--bg);border:1px solid var(--border)}.table-wrap{width:100%;overflow-x:auto}.notification-modal{max-width:620px}.notification-item{width:100%;display:flex;align-items:flex-start;gap:10px;text-align:right;border:1px solid var(--border);border-radius:10px;padding:11px;margin-bottom:7px;background:var(--surface);color:var(--text);font-family:inherit;cursor:pointer}.notification-item:hover{border-color:var(--navy-light);transform:translateY(-1px)}.notification-item.unread{border-inline-start:3px solid var(--navy-light);background:rgba(52,45,115,.045)}.notification-icon{width:34px;height:34px;border-radius:9px;background:rgba(52,45,115,.1);display:grid;place-items:center;flex:none}.notification-copy{display:flex;flex-direction:column;gap:2px;min-width:0}.notification-copy>span{font-size:12px;color:var(--muted);line-height:1.7}.notification-copy small{font-size:10px;color:var(--muted)}.activity-row{display:flex;gap:10px;align-items:flex-start;padding:9px 0;border-bottom:1px solid var(--border)}.activity-row:last-child{border-bottom:0}.activity-dot{width:8px;height:8px;border-radius:50%;background:var(--navy-light);margin-top:7px;flex:none}.notification-bell{position:relative;min-width:42px;padding-inline:10px!important}.notification-bell .notif-count{position:absolute;top:-5px;left:-5px;min-width:19px;height:19px;padding:0 4px;border-radius:999px;background:var(--danger);color:#fff;font-size:10px;font-weight:800;display:grid;place-items:center;border:2px solid var(--navy)}.deadline-badge.soon{background:rgba(184,134,11,.12);color:var(--warn)}#global-search-input{width:100%;font-size:15px;padding:12px 14px}#global-search-results{max-height:52vh;overflow:auto;margin-top:10px}.search-result{display:flex;align-items:center;gap:10px;padding:11px;border:1px solid var(--border);border-radius:10px;margin-bottom:7px;cursor:pointer;background:var(--surface)}.search-result:hover{border-color:var(--navy-light);transform:translateY(-1px)}.search-result .sr-icon{width:34px;height:34px;border-radius:9px;background:rgba(52,45,115,.1);display:grid;place-items:center}.search-result .sr-meta{font-size:10px;color:var(--muted);margin-top:2px}@keyframes appReveal{from{opacity:0}to{opacity:1}}@keyframes sectionIn{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:none}}@keyframes modalIn{from{opacity:0;transform:translateY(8px) scale(.98)}to{opacity:1;transform:none}}@keyframes overlayIn{from{opacity:0}to{opacity:1}}@keyframes countIn{from{opacity:0;transform:translateY(5px) scale(.96)}to{opacity:1;transform:none}}@keyframes resultIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}@media(max-width:800px){.quick-actions{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:520px){header{padding-inline:12px}header>div:last-child{width:100%;display:flex;gap:6px;overflow-x:auto;padding-bottom:2px}header>div:last-child .btn{white-space:nowrap}main{padding-inline:10px}.quick-actions{grid-template-columns:1fr 1fr}.card{padding:13px}}@media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important}}
 </style>
 </head>
 <body>
-
-<div id="login-screen">
-  <div class="login-shell">
-    <aside class="login-brand">
-      <img src="/icons/apple-touch-icon.png" alt="">
-      <h2>دفتر دَست</h2>
-      <p>پروژه‌ها، کارفرمایان، قراردادها و تیم؛ همه در یک پنل.</p>
-      <ul class="login-points">
-        <li>ثبت ورود و خروج با یک کلیک یا QR</li>
-        <li>کارها و ددلاین‌ها روی تقویم شمسی</li>
-        <li>پیگیری سرنخ تا قرارداد و وصول مطالبات</li>
-      </ul>
-    </aside>
-    <form class="login-card" id="login-form" onsubmit="handleLoginSubmit(event)" novalidate>
-      <h1>ورود به پنل دفتر</h1>
-      <p class="login-sub">با نام کاربری و رمزی که مدیر دفتر برایت ساخته وارد شو.</p>
-      <label for="login-username">نام کاربری</label>
-      <input type="text" id="login-username" name="username" autocomplete="username" autocapitalize="off" autocorrect="off" spellcheck="false" dir="ltr" required>
-      <label for="login-password">رمز عبور</label>
-      <div class="pw-field">
-        <input type="password" id="login-password" name="password" autocomplete="current-password" dir="ltr" required>
-        <button type="button" class="pw-toggle" id="pw-toggle" onclick="togglePasswordVisibility()" aria-label="نمایش رمز">نمایش</button>
-      </div>
-      <div id="login-error" class="error-msg" role="alert" aria-live="polite"></div>
-      <button type="submit" class="btn login-submit" id="login-submit">ورود</button>
-      <button type="button" class="login-link" onclick="showForgotPassword()">رمز عبورم را فراموش کرده‌ام</button>
-    </form>
-  </div>
-</div>
-
-<div id="app-root" class="hidden">
-  <header>
-    <div>
-      <h1>ERP دفتر دَست</h1>
-      <div class="user-badge" id="user-badge"></div>
-    </div>
-    <div>
-      <button class="btn secondary hidden" id="calendar-btn" onclick="connectCalendar()" style="color:#fff;border-color:#fff;">اتصال به گوگل کلندر</button>
-      <button class="btn secondary hidden" id="install-btn" onclick="installApp()" style="color:#fff;border-color:#fff;">📲 نصب اپ</button>
-      <button class="btn secondary hidden" id="dark-btn" onclick="toggleDarkMode()" style="color:#fff;border-color:#fff;">🌙 حالت تیره</button>
-      <button class="btn secondary hidden" id="notif-btn" onclick="enableNotifications()" style="color:#fff;border-color:#fff;">🔔 فعال‌سازی اعلان</button>
-      <button class="btn secondary notification-bell" id="notification-btn" onclick="openNotificationCenter()" style="color:#fff;border-color:#fff;" aria-label="اعلان‌ها">🔔<span id="notif-count" class="notif-count hidden">۰</span></button>
-      <button class="btn secondary" id="search-btn" onclick="openGlobalSearch()" style="color:#fff;border-color:#fff;">⌕ جستجو</button>
-      <button class="btn secondary" onclick="changeMyPassword()" style="color:#fff;border-color:#fff;">🔐 تغییر رمز</button>
-      <button class="btn secondary" onclick="doLogout()" style="color:#fff;border-color:#fff;">خروج</button>
-    </div>
-  </header>
-
-  <nav id="top-nav"></nav>
-
-  <main>
-    <div id="section-attendance" class="hidden"></div>
-    <div id="section-calendar" class="hidden"></div>
-    <div id="section-tasks" class="hidden"></div>
-    <div id="section-dashboard" class="hidden"></div>
-    <div id="section-pipeline" class="hidden"></div>
-    <div id="section-clients" class="hidden"></div>
-    <div id="section-projects" class="hidden"></div>
-    <div id="section-contracts" class="hidden"></div>
-    <div id="section-office-tasks" class="hidden"></div>
-    <div id="section-team" class="hidden"></div>
-    <div id="section-erp-tasks" class="hidden"></div>
-    <div id="section-costs" class="hidden"></div>
-    <div id="section-tenders" class="hidden"></div>
-  </main>
-</div>
-
-<div id="edit-modal-root"></div>
-<div id="global-search-root"></div>
-
+<div id="login-screen"><div class="login-shell"><aside class="login-brand"><img src="/icons/apple-touch-icon.png" alt=""><h2>دفتر دَست</h2><p>پروژه‌ها، کارفرمایان، قراردادها و تیم؛ همه در یک پنل.</p><ul class="login-points"><li>ثبت ورود و خروج با یک کلیک یا QR</li><li>کارها و ددلاین‌ها روی تقویم شمسی</li><li>پیگیری سرنخ تا قرارداد و وصول مطالبات</li></ul></aside><form class="login-card" id="login-form" onsubmit="handleLoginSubmit(event)" novalidate><h1>ورود به پنل دفتر</h1><p class="login-sub">با نام کاربری و رمزی که مدیر دفتر برایت ساخته وارد شو.</p><label for="login-username">نام کاربری</label><input type="text" id="login-username" name="username" autocomplete="username" autocapitalize="off" autocorrect="off" spellcheck="false" dir="ltr" required><label for="login-password">رمز عبور</label><div class="pw-field"><input type="password" id="login-password" name="password" autocomplete="current-password" dir="ltr" required><button type="button" class="pw-toggle" id="pw-toggle" onclick="togglePasswordVisibility()" aria-label="نمایش رمز">نمایش</button></div><div id="login-error" class="error-msg" role="alert" aria-live="polite"></div><button type="submit" class="btn login-submit" id="login-submit">ورود</button><button type="button" class="login-link" onclick="showForgotPassword()">رمز عبورم را فراموش کرده‌ام</button></form></div></div>
+<div id="app-root" class="hidden"><header><div><h1>ERP دفتر دَست</h1><div class="user-badge" id="user-badge"></div></div><div><button class="btn secondary hidden" id="calendar-btn" onclick="connectCalendar()" style="color:#fff;border-color:#fff;">اتصال به گوگل کلندر</button><button class="btn secondary hidden" id="install-btn" onclick="installApp()" style="color:#fff;border-color:#fff;">📲 نصب اپ</button><button class="btn secondary hidden" id="dark-btn" onclick="toggleDarkMode()" style="color:#fff;border-color:#fff;">🌙 حالت تیره</button><button class="btn secondary hidden" id="notif-btn" onclick="enableNotifications()" style="color:#fff;border-color:#fff;">🔔 فعال‌سازی اعلان</button><button class="btn secondary notification-bell" id="notification-btn" onclick="openNotificationCenter()" style="color:#fff;border-color:#fff;" aria-label="اعلان‌ها">🔔<span id="notif-count" class="notif-count hidden">۰</span></button><button class="btn secondary" id="search-btn" onclick="openGlobalSearch()" style="color:#fff;border-color:#fff;">⌕ جستجو</button><button class="btn secondary" onclick="changeMyPassword()" style="color:#fff;border-color:#fff;">🔐 تغییر رمز</button><button class="btn secondary" onclick="doLogout()" style="color:#fff;border-color:#fff;">خروج</button></div></header><nav id="top-nav"></nav><main><div id="section-attendance" class="hidden"></div><div id="section-calendar" class="hidden"></div><div id="section-tasks" class="hidden"></div><div id="section-dashboard" class="hidden"></div><div id="section-pipeline" class="hidden"></div><div id="section-clients" class="hidden"></div><div id="section-projects" class="hidden"></div><div id="section-contracts" class="hidden"></div><div id="section-office-tasks" class="hidden"></div><div id="section-team" class="hidden"></div><div id="section-erp-tasks" class="hidden"></div><div id="section-costs" class="hidden"></div><div id="section-tenders" class="hidden"></div></main></div>
+<div id="edit-modal-root"></div><div id="global-search-root"></div>
 <script src="app.js"></script>
+<script src="qr-security.js"></script>
 <script>
-  // صفحه‌ی ورود هم از تنظیم حالت تیره‌ی کاربر پیروی کند
   if (localStorage.getItem('dast-dark') === '1') document.body.classList.add('dark');
-
-  async function handleLoginSubmit(e) {
-    e.preventDefault();
-    const u = document.getElementById('login-username');
-    const p = document.getElementById('login-password');
-    const err = document.getElementById('login-error');
-    const btn = document.getElementById('login-submit');
-    err.innerText = '';
-    if (!u.value.trim() || !p.value) {
-      err.innerText = 'نام کاربری و رمز عبور را وارد کن.';
-      (u.value.trim() ? p : u).focus();
-      return;
-    }
-    btn.disabled = true;
-    btn.innerText = 'در حال ورود...';
-    try {
-      await doLogin();
-    } catch (_) {
-      err.innerText = 'اتصال برقرار نشد، دوباره تلاش کن.';
-    } finally {
-      btn.disabled = false;
-      btn.innerText = 'ورود';
-      if (err.innerText) p.select();
-      else p.value = '';
-    }
-  }
-
-  function togglePasswordVisibility() {
-    const p = document.getElementById('login-password');
-    const b = document.getElementById('pw-toggle');
-    const show = p.type === 'password';
-    p.type = show ? 'text' : 'password';
-    b.innerText = show ? 'پنهان' : 'نمایش';
-    b.setAttribute('aria-label', show ? 'پنهان کردن رمز' : 'نمایش رمز');
-    p.focus();
-  }
+  async function handleLoginSubmit(e){e.preventDefault();const u=document.getElementById('login-username'),p=document.getElementById('login-password'),err=document.getElementById('login-error'),btn=document.getElementById('login-submit');err.innerText='';if(!u.value.trim()||!p.value){err.innerText='نام کاربری و رمز عبور را وارد کن.';(u.value.trim()?p:u).focus();return}btn.disabled=true;btn.innerText='در حال ورود...';try{await doLogin()}catch(_){err.innerText='اتصال برقرار نشد، دوباره تلاش کن.'}finally{btn.disabled=false;btn.innerText='ورود';if(err.innerText)p.select();else p.value=''}}
+  function togglePasswordVisibility(){const p=document.getElementById('login-password'),b=document.getElementById('pw-toggle'),show=p.type==='password';p.type=show?'text':'password';b.innerText=show?'پنهان':'نمایش';b.setAttribute('aria-label',show?'پنهان کردن رمز':'نمایش رمز');p.focus()}
 </script>
 </body>
 </html>
