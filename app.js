@@ -353,7 +353,7 @@ let notificationChannel = null;
 let notifications = [];
 let allProfiles = [];
 
-let personalTasks = [];
+let personalTasks = [], teamPersonalTasks = [];
 let leads = [], clients = [], projects = [], contracts = [], contractStagesMap = {},
     members = [], erpTasks = [], fixedCosts = [], tenders = [], interactions = [];
 
@@ -752,7 +752,7 @@ function switchSection(id) {
 }
 
 async function refreshAllErpData() {
-  const [l, c, p, ct, m, et, fc, td, itr] = await Promise.all([
+  const [l, c, p, ct, m, et, fc, td, itr, pt] = await Promise.all([
     sb.from('leads').select('*').order('created_at', { ascending: false }),
     sb.from('clients').select('*').order('created_at', { ascending: false }),
     sb.from('projects').select('*').order('created_at', { ascending: false }),
@@ -762,10 +762,12 @@ async function refreshAllErpData() {
     sb.from('fixed_costs').select('*').order('created_at', { ascending: false }),
     sb.from('tenders').select('*').order('created_at', { ascending: false }),
     sb.from('interactions').select('*').order('created_at', { ascending: false }),
+    sb.from('personal_tasks').select('*').order('due_date', { ascending: true }),
   ]);
   leads = l.data || []; clients = c.data || []; projects = p.data || []; contracts = ct.data || [];
   members = m.data || []; erpTasks = et.data || []; fixedCosts = fc.data || []; tenders = td.data || [];
   interactions = itr.data || [];
+  teamPersonalTasks = pt.data || [];
   cacheRows('leads', leads); cacheRows('clients', clients); cacheRows('projects', projects); cacheRows('contracts', contracts);
   cacheRows('members', members); cacheRows('erp_tasks', erpTasks); cacheRows('fixed_costs', fixedCosts); cacheRows('tenders', tenders);
 
@@ -1306,7 +1308,7 @@ function enhanceDashboard(){
     actions.forEach(a=>{const b=document.createElement('button');b.className='quick-action';b.innerHTML='<span class="qa-icon">'+a[0]+'</span><span><strong>'+a[1]+'</strong><div class="sr-meta">باز کردن بخش</div></span>';b.onclick=()=>switchSection(a[2]);grid.appendChild(b);});
   }
   if(!document.getElementById('dashboard-deadlines')){
-    const taskList=currentProfile?.is_admin?(erpTasks||[]):(personalTasks||[]);
+    const taskList=currentProfile?.is_admin?[...(erpTasks||[]), ...(teamPersonalTasks||[])]: (personalTasks||[]);
     const todayStr=new Date().toISOString().slice(0,10);
     const due=taskList.filter(t=>t.due_date&&t.status!=='done').sort((a,b)=>String(a.due_date).localeCompare(String(b.due_date))).slice(0,6);
     const overdue=due.filter(t=>String(t.due_date).slice(0,10)<todayStr).length;
