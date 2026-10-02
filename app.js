@@ -349,6 +349,8 @@ const TENDER_STATUSES = ["در حال بررسی", "ثبت‌نام‌شده", "
 
 let currentUser = null, currentProfile = null;
 let attendanceTimer = null, activeCheckIn = null;
+let notificationChannel = null;
+let notifications = [];
 let allProfiles = [];
 
 let personalTasks = [];
@@ -432,6 +434,7 @@ async function doLogin() {
 }
 async function doLogout() {
   if (taskChannel) { sb.removeChannel(taskChannel); taskChannel = null; }
+  if (notificationChannel) { sb.removeChannel(notificationChannel); notificationChannel = null; }
   try {
     const sub = swReg && await swReg.pushManager.getSubscription();
     if (sub) { await apiPost('/api/push-subscribe', { action: 'unsubscribe', endpoint: sub.endpoint }); }
@@ -501,7 +504,7 @@ const NAV_ITEMS = [
   { id: 'attendance', label: 'ورود و خروج' },
   { id: 'tasks', label: 'کارها' },
   { id: 'calendar', label: 'تقویم' },
-  { id: 'dashboard', label: 'داشبورد', adminOnly: true },
+  { id: 'dashboard', label: 'داشبورد' },
   { id: 'pipeline', label: 'پایپ‌لاین سرنخ‌ها', adminOnly: true },
   { id: 'clients', label: 'کارفرمایان', adminOnly: true },
   { id: 'projects', label: 'پروژه‌ها', adminOnly: true },
@@ -527,6 +530,7 @@ async function loadProfileAndShowApp() {
   loadMyTasks();
   refreshGoogleStatus();
   startTaskNotifications();
+  startNotificationCenter();
 
   if (currentProfile.is_admin) {
     const { data: profs } = await sb.from('profiles').select('*');
@@ -615,24 +619,78 @@ async function startTaskNotifications() {
   updateInstallBtn();
   const btn = document.getElementById('notif-btn');
   if (pushSupported() && Notification.permission === 'granted') {
-    subscribeToPush().catch(() => {});                       // هر بار ورود، دستگاه دوباره روی حساب فعلی ثبت می‌شود
+    subscribeToPush().catch(() => {});
     if (btn) btn.classList.add('hidden');
   } else if (btn) {
-    btn.classList.remove('hidden');                          // در آیفونِ نصب‌نشده هم نمایش داده می‌شود تا راهنما بیاید
+    btn.classList.remove('hidden');
   }
   if (taskChannel) sb.removeChannel(taskChannel);
   taskChannel = sb.channel('tasks-' + currentUser.id)
-    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'personal_tasks', filter: `user_id=eq.${currentUser.id}` }, (payload) => {
-      const t = payload.new;
-      if (t.assigned_by && t.assigned_by !== currentUser.id) {
-        notifyUser('کار جدید برای شما', `${t.title}${t.due_date ? ' — مهلت: ' + fmtDate(t.due_date) : ''}`);
-      }
-      loadMyTasks();
-    })
+    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'personal_tasks', filter: `user_id=eq.${currentUser.id}` }, () => loadMyTasks())
     .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'personal_tasks', filter: `user_id=eq.${currentUser.id}` }, () => loadMyTasks())
     .subscribe();
 }
 
+async function loadNotifications() {
+  const { data, error } = await sb.from('notifications').select('*').eq('user_id', currentUser.id).order('created_at', { ascending:false }).limit(30);
+  if (error) return;
+  notifications = data || [];
+  renderNotificationBell();
+}
+function renderNotificationBell() {
+  const count = notifications.filter(n => !n.is_read).length;
+  const badge = document.getElementById('notif-count');
+  if (badge) { badge.textContent = count > 99 ? '۹۹+' : toFaDigits(count); badge.classList.toggle('hidden', count === 0); }
+}
+function notificationTime(iso) {
+  if (!iso) return '';
+  const d = new Date(iso), now = new Date(), mins = Math.max(0, Math.round((now-d)/60000));
+  if (mins < 1) return 'همین الان';
+  if (mins < 60) return toFaDigits(mins)+' دقیقه پیش';
+  if (mins < 1440) return toFaDigits(Math.round(mins/60))+' ساعت پیش';
+  return fmtDate(iso.slice(0,10));
+}
+function openNotificationCenter() {
+  const root=document.getElementById('global-search-root'); if(!root)return;
+  root.innerHTML=`<div class="overlay" onclick="if(event.target===this)closeNotificationCenter()"><div class="modal notification-modal">
+    <div class="row-top"><div><h3 style="margin:0;">🔔 اعلان‌ها</h3><div class="sr-meta">آخرین اتفاقات مربوط به حساب و کارهای شما</div></div><div class="row" style="margin:0"><button class="btn small secondary" onclick="markAllNotificationsRead()">همه خوانده شد</button><button class="btn small secondary" onclick="closeNotificationCenter()">بستن</button></div></div>
+    <div id="notification-list"></div>
+  </div></div>`;
+  renderNotificationList();
+}
+function closeNotificationCenter(){ const root=document.getElementById('global-search-root'); if(root) root.innerHTML=''; }
+function renderNotificationList() {
+  const box=document.getElementById('notification-list'); if(!box)return;
+  box.innerHTML=notifications.length ? notifications.map(n=>`
+    <button class="notification-item ${n.is_read?'read':'unread'}" onclick="markNotificationRead('${n.id}')">
+      <span class="notification-icon">${n.type==='task'?'✓':'•'}</span>
+      <span class="notification-copy"><strong>${escapeHtml(n.title)}</strong><span>${escapeHtml(n.body||'')}</span><small>${notificationTime(n.created_at)}</small></span>
+    </button>`).join('') : '<div class="empty">اعلانی نداری 🎉</div>';
+}
+async function markNotificationRead(id) {
+  await sb.from('notifications').update({is_read:true}).eq('id',id).eq('user_id',currentUser.id);
+  const n=notifications.find(x=>x.id===id); if(n)n.is_read=true;
+  renderNotificationBell(); renderNotificationList();
+  if(n?.section){ closeNotificationCenter(); switchSection(n.section); }
+}
+async function markAllNotificationsRead() {
+  await sb.from('notifications').update({is_read:true}).eq('user_id',currentUser.id).eq('is_read',false);
+  notifications.forEach(n=>n.is_read=true);
+  renderNotificationBell(); renderNotificationList();
+}
+function startNotificationCenter() {
+  loadNotifications();
+  if (notificationChannel) sb.removeChannel(notificationChannel);
+  notificationChannel = sb.channel('notifications-' + currentUser.id)
+    .on('postgres_changes', { event:'INSERT', schema:'public', table:'notifications', filter:`user_id=eq.${currentUser.id}` }, payload => {
+      const n=payload.new;
+      notifications=[n,...notifications].slice(0,30);
+      renderNotificationBell();
+      notifyUser(n.title,n.body||'');
+      if (document.getElementById('notification-list')) renderNotificationList();
+    })
+    .subscribe();
+}
 let googleStatus = null;
 async function refreshGoogleStatus() {
   const r = await fetch('/api/google-status', { headers: await authHeader() });
@@ -687,7 +745,10 @@ function switchSection(id) {
   if (id === 'attendance') renderAttendanceSection();
   else if (id === 'tasks') renderTasksSection();
   else if (id === 'calendar') renderCalendar();
-  else if (renderMap[id]) { section.innerHTML = renderMap[id](); if (id === 'dashboard') enhanceDashboard(); }
+  else if (renderMap[id]) {
+    section.innerHTML = renderMap[id]();
+    if (id === 'dashboard') { enhanceDashboard(); loadDashboardExtras(); }
+  }
 }
 
 async function refreshAllErpData() {
@@ -1042,33 +1103,56 @@ function exportTimesheet() {
 }
 
 // ================= کارها (شخصی) =================
+function priorityBadge(priority) {
+  const p = priority || 'متوسط';
+  const cls = p === 'بالا' ? 'priority-high' : p === 'پایین' ? 'priority-low' : 'priority-mid';
+  return `<span class="priority-badge ${cls}">${escapeHtml(p)}</span>`;
+}
+function taskDueMeta(t) {
+  if (!t.due_date) return '<span class="task-no-date">بدون ددلاین</span>';
+  const today = new Date().toISOString().slice(0,10);
+  const due = String(t.due_date).slice(0,10);
+  const state = t.status === 'done' ? 'done' : due < today ? 'overdue' : due === today ? 'today' : 'upcoming';
+  const label = state === 'overdue' ? 'عقب‌افتاده' : state === 'today' ? 'امروز' : fmtDate(t.due_date);
+  return `<span class="task-due ${state}">${label}</span>`;
+}
 function renderTasksSection() {
   const el = document.getElementById('section-tasks');
   const teamBlock = currentProfile.is_admin ? `
     <div class="card">
-      <div class="row-top"><h2>کارهای کارمندان</h2></div>
+      <div class="row-top"><h2>مرکز کارهای تیم</h2><span style="font-size:11px;color:var(--muted)">اولویت، ددلاین و وضعیت</span></div>
       <div class="row">
         <select id="team-task-employee"></select>
         <input type="text" id="team-task-title" placeholder="عنوان کار">
+        <select id="team-task-priority">${TASK_PRIORITIES.map(p=>`<option>${p}</option>`).join('')}</select>
         ${jalaliDateField('team-task-date')}
         <button class="btn" onclick="addTeamTask()">محول کردن کار</button>
       </div>
       <div class="row">
         <label style="margin:0;">نمایش کارهای:</label>
         <select id="team-task-filter" onchange="loadTeamTasks()"><option value="">— همه پرسنل —</option></select>
+        <select id="team-task-status-filter" onchange="loadTeamTasks()"><option value="">— همه وضعیت‌ها —</option><option value="new">در انتظار</option><option value="progress">در حال انجام</option><option value="done">تکمیل‌شده</option></select>
+        <select id="team-task-priority-filter" onchange="loadTeamTasks()"><option value="">— همه اولویت‌ها —</option>${TASK_PRIORITIES.map(p=>`<option>${p}</option>`).join('')}</select>
       </div>
       <div id="team-task-summary" style="margin-bottom:10px;font-size:13px;color:var(--muted);"></div>
-      <table><thead><tr><th>کارمند</th><th>عنوان</th><th>تاریخ</th><th>وضعیت</th><th></th></tr></thead><tbody id="teamtasks-table"></tbody></table>
+      <div class="table-wrap"><table><thead><tr><th>کارمند</th><th>عنوان</th><th>اولویت</th><th>ددلاین</th><th>وضعیت</th><th></th></tr></thead><tbody id="teamtasks-table"></tbody></table></div>
     </div>` : '';
   el.innerHTML = `
     <div class="card">
-      <div class="row-top"><h2>کارهای من</h2></div>
+      <div class="row-top"><div><h2>مرکز کارهای من</h2><div style="font-size:11px;color:var(--muted)">همه کارها را بر اساس وضعیت و اولویت مدیریت کن</div></div></div>
       <div class="row">
         <input type="text" id="mytask-title" placeholder="عنوان کار">
+        <select id="mytask-priority">${TASK_PRIORITIES.map(p=>`<option>${p}</option>`).join('')}</select>
         ${jalaliDateField('mytask-date')}
-        <button class="btn" onclick="addMyTask()">افزودن</button>
+        <button class="btn" onclick="addMyTask()">+ افزودن کار</button>
       </div>
-      <table><thead><tr><th>عنوان</th><th>تاریخ</th><th>وضعیت</th><th></th></tr></thead><tbody id="mytasks-table"></tbody></table>
+      <div class="row">
+        <select id="mytask-status-filter" onchange="loadMyTasks()"><option value="">— همه وضعیت‌ها —</option><option value="new">در انتظار</option><option value="progress">در حال انجام</option><option value="done">تکمیل‌شده</option></select>
+        <select id="mytask-priority-filter" onchange="loadMyTasks()"><option value="">— همه اولویت‌ها —</option>${TASK_PRIORITIES.map(p=>`<option>${p}</option>`).join('')}</select>
+        <button class="btn secondary small" onclick="loadMyTasks()">↻ تازه‌سازی</button>
+      </div>
+      <div id="mytask-summary" class="task-summary"></div>
+      <div class="table-wrap"><table><thead><tr><th>عنوان</th><th>اولویت</th><th>ددلاین</th><th>وضعیت</th><th></th></tr></thead><tbody id="mytasks-table"></tbody></table></div>
     </div>
     ${teamBlock}
   `;
@@ -1104,21 +1188,34 @@ async function addMyTask() {
   const title = document.getElementById('mytask-title').value.trim();
   const due_date = getJalaliDate('mytask-date');
   if (!title) return;
-  const { data, error } = await sb.from('personal_tasks').insert([{ user_id: currentUser.id, title, due_date, status: 'new' }]).select().single();
+  const priority = document.getElementById('mytask-priority')?.value || 'متوسط';
+  const { data, error } = await sb.from('personal_tasks').insert([{ user_id: currentUser.id, title, due_date, priority, status: 'new' }]).select().single();
   document.getElementById('mytask-title').value=''; clearJalaliDate('mytask-date');
   if (error) { alert('ذخیره نشد: ' + error.message); return; }
   if (data && due_date) syncTaskCalendar(data.id, false);
   loadMyTasks();
 }
 async function loadMyTasks() {
-  const { data } = await sb.from('personal_tasks').select('*').eq('user_id', currentUser.id).order('due_date', { ascending: true });
+  let q = sb.from('personal_tasks').select('*').eq('user_id', currentUser.id).order('due_date', { ascending: true });
+  const sf = document.getElementById('mytask-status-filter')?.value || '';
+  const pf = document.getElementById('mytask-priority-filter')?.value || '';
+  if (sf) q = q.eq('status', sf);
+  if (pf) q = q.eq('priority', pf);
+  const { data } = await q;
   personalTasks = data || [];
   const tbody = document.getElementById('mytasks-table'); if (!tbody) return;
   cacheRows('personal_tasks', data||[]);
+  const counts = {new:0,progress:0,done:0};
+  (data||[]).forEach(t => counts[t.status] = (counts[t.status]||0)+1);
+  const summary = document.getElementById('mytask-summary');
+  if (summary) summary.innerHTML = `<span class="task-summary-chip">${toFaDigits(data?.length||0)} کار</span> <span class="task-summary-chip">در انتظار: ${toFaDigits(counts.new||0)}</span> <span class="task-summary-chip">در حال انجام: ${toFaDigits(counts.progress||0)}</span> <span class="task-summary-chip">تکمیل‌شده: ${toFaDigits(counts.done||0)}</span>`;
   tbody.innerHTML = (data||[]).map(t => `<tr>
-    <td>${escapeHtml(t.title)}</td><td>${fmtDate(t.due_date)}</td><td>${statusLabel(t.status)}</td>
+    <td><strong>${escapeHtml(t.title)}</strong></td>
+    <td>${priorityBadge(t.priority)}</td>
+    <td>${taskDueMeta(t)}</td>
+    <td>${statusLabel(t.status)}</td>
     <td>${taskActionButtons(t, `deleteMyTask('${t.id}')`)}</td>
-  </tr>`).join('') || '<tr><td colspan="4" class="empty">کاری ثبت نشده</td></tr>';
+  </tr>`).join('') || '<tr><td colspan="5" class="empty">کاری با این فیلتر پیدا نشد.</td></tr>';
 }
 async function deleteMyTask(id) {
   await apiPost('/api/task-calendar', { task_id: id, action: 'remove' });
@@ -1137,32 +1234,37 @@ async function addTeamTask() {
   const title = document.getElementById('team-task-title').value.trim();
   const due_date = getJalaliDate('team-task-date');
   if (!title || !user_id) return;
-  const { data, error } = await sb.from('personal_tasks').insert([{ user_id, title, due_date, status: 'new', assigned_by: currentUser.id }]).select().single();
+  const priority = document.getElementById('team-task-priority')?.value || 'متوسط';
+  const { data, error } = await sb.from('personal_tasks').insert([{ user_id, title, due_date, priority, status: 'new', assigned_by: currentUser.id }]).select().single();
   document.getElementById('team-task-title').value=''; clearJalaliDate('team-task-date');
   if (error) { alert('ذخیره نشد: ' + error.message); return; }
   if (data && due_date) syncTaskCalendar(data.id, data.user_id !== currentUser.id);
   loadTeamTasks(); if (data && data.user_id === currentUser.id) loadMyTasks();
 }
 async function loadTeamTasks() {
-  const filterId = document.getElementById('team-task-filter') ? document.getElementById('team-task-filter').value : '';
+  const filterId = document.getElementById('team-task-filter')?.value || '';
+  const statusFilter = document.getElementById('team-task-status-filter')?.value || '';
+  const priorityFilter = document.getElementById('team-task-priority-filter')?.value || '';
   let q = sb.from('personal_tasks').select('*').order('due_date', { ascending: true });
   if (filterId) q = q.eq('user_id', filterId);
+  if (statusFilter) q = q.eq('status', statusFilter);
+  if (priorityFilter) q = q.eq('priority', priorityFilter);
   const { data } = await q;
   const rows = data || [];
   cacheRows('personal_tasks', rows);
   const tbody = document.getElementById('teamtasks-table'); if (!tbody) return;
   tbody.innerHTML = rows.map(t => `<tr>
-    <td>${escapeHtml(nameOf(t.user_id))}</td><td>${escapeHtml(t.title)}</td><td>${fmtDate(t.due_date)}</td><td>${statusLabel(t.status)}</td>
+    <td>${escapeHtml(nameOf(t.user_id))}</td><td><strong>${escapeHtml(t.title)}</strong></td><td>${priorityBadge(t.priority)}</td><td>${taskDueMeta(t)}</td><td>${statusLabel(t.status)}</td>
     <td>${taskActionButtons(t, `deleteTeamTask('${t.id}')`)}</td>
-  </tr>`).join('') || '<tr><td colspan="5" class="empty">کاری ثبت نشده</td></tr>';
+  </tr>`).join('') || '<tr><td colspan="6" class="empty">کاری با این فیلتر پیدا نشد.</td></tr>';
 
   const summary = document.getElementById('team-task-summary');
   if (summary) {
     const c = { new: 0, progress: 0, done: 0 };
     rows.forEach(t => { c[t.status] = (c[t.status]||0) + 1; });
-    summary.innerHTML = filterId
-      ? `از مجموع ${rows.length} کار: <b>${c.new||0}</b> انجام‌نشده، <b>${c.progress||0}</b> در حال انجام، <b>${c.done||0}</b> انجام‌شده`
-      : `مجموع ${rows.length} کار برای همه پرسنل`;
+    const high = rows.filter(t => t.priority === 'بالا').length;
+    const overdue = rows.filter(t => t.due_date && String(t.due_date).slice(0,10) < new Date().toISOString().slice(0,10) && t.status !== 'done').length;
+    summary.innerHTML = `مجموع: <b>${rows.length}</b> · در انتظار: <b>${c.new||0}</b> · در حال انجام: <b>${c.progress||0}</b> · تکمیل‌شده: <b>${c.done||0}</b> · اولویت بالا: <b>${high}</b> · عقب‌افتاده: <b>${overdue}</b>`;
   }
 }
 async function deleteTeamTask(id) {
@@ -1214,7 +1316,39 @@ function enhanceDashboard(){
   }
 }
 // ================= داشبورد =================
+function renderPersonalDashboard() {
+  const today = new Date().toISOString().slice(0,10);
+  const all = personalTasks || [];
+  const active = all.filter(t => t.status !== 'done');
+  const overdue = active.filter(t => t.due_date && String(t.due_date).slice(0,10) < today);
+  const todayTasks = active.filter(t => t.due_date && String(t.due_date).slice(0,10) === today);
+  const high = active.filter(t => t.priority === 'بالا');
+  return `
+    <div class="grid-stats">
+      <div class="stat"><div class="num">${active.length}</div><div class="label">کار باز</div></div>
+      <div class="stat"><div class="num" style="color:var(--danger);">${overdue.length}</div><div class="label">عقب‌افتاده</div></div>
+      <div class="stat"><div class="num">${todayTasks.length}</div><div class="label">ددلاین امروز</div></div>
+      <div class="stat"><div class="num">${high.length}</div><div class="label">اولویت بالا</div></div>
+    </div>
+    <div class="card">
+      <div class="row-top"><div><h2>👋 نمای شخصی من</h2><div style="font-size:12px;color:var(--muted)">کارهای مهم و نزدیکت را اینجا می‌بینی.</div></div><button class="btn small" onclick="switchSection('tasks')">رفتن به مرکز کارها</button></div>
+      ${active.sort((a,b)=>String(a.due_date||'9999').localeCompare(String(b.due_date||'9999'))).slice(0,7).map(t=>`
+        <div class="lead-card ${t.due_date && String(t.due_date).slice(0,10)<today?'task-overdue':''}">
+          <div class="row-top" style="margin:0"><strong>${escapeHtml(t.title)}</strong><span>${priorityBadge(t.priority)}</span></div>
+          <div class="meta" style="margin-top:6px">${taskDueMeta(t)} · ${statusLabel(t.status)}</div>
+        </div>`).join('') || '<div class="empty">فعلاً کار بازی نداری 🎉</div>'}
+    </div>
+    <div class="card">
+      <div class="row-top"><h2>⚡ دسترسی سریع</h2></div>
+      <div class="quick-actions">
+        <button class="quick-action" onclick="switchSection('attendance')"><span class="qa-icon">🕘</span><span><strong>ورود و خروج</strong><div class="sr-meta">ثبت حضور امروز</div></span></button>
+        <button class="quick-action" onclick="switchSection('tasks')"><span class="qa-icon">✓</span><span><strong>کار جدید</strong><div class="sr-meta">افزودن کار</div></span></button>
+        <button class="quick-action" onclick="switchSection('calendar')"><span class="qa-icon">📅</span><span><strong>تقویم</strong><div class="sr-meta">دیدن ددلاین‌ها</div></span></button>
+      </div>
+    </div>`;
+}
 function renderDashboard() {
+  if (!currentProfile?.is_admin) return renderPersonalDashboard();
   const activeLeads = leads.filter(l => l.stage !== 'برنده' && l.stage !== 'بازنده').length;
   const won = leads.filter(l => l.stage === 'برنده').length;
   const lost = leads.filter(l => l.stage === 'بازنده').length;
@@ -1248,6 +1382,10 @@ function renderDashboard() {
       </div>
     </div>
     <div class="card">
+      <div class="row-top"><h2>🧾 آخرین فعالیت‌ها</h2><span style="font-size:11px;color:var(--muted)">ثبت خودکار تغییرات مهم</span></div>
+      <div id="dashboard-activity"><div class="empty">در حال بارگذاری...</div></div>
+    </div>
+    <div class="card">
       <h2>پیگیری‌های نزدیک</h2>
       ${upcoming.length ? upcoming.map(i => `<div style="border-bottom:1px solid var(--border);padding:10px 0;font-size:13px;">
         <strong>${escapeHtml(i.related_name||'')}</strong> — ${escapeHtml(i.type)}
@@ -1255,6 +1393,23 @@ function renderDashboard() {
       </div>`).join('') : '<div class="empty">پیگیری‌ای ثبت نشده</div>'}
     </div>
   `;
+}
+
+async function loadDashboardExtras() {
+  if (!currentProfile?.is_admin) return;
+  const box=document.getElementById('dashboard-activity');
+  if (!box) return;
+  const {data}=await sb.from('activity_logs').select('*').order('created_at',{ascending:false}).limit(8);
+  box.innerHTML=(data||[]).length ? (data||[]).map(a=>`
+    <div class="activity-row">
+      <span class="activity-dot"></span>
+      <div><strong>${escapeHtml(activityLabel(a))}</strong><div class="sr-meta">${escapeHtml(a.entity_name||a.entity_type)} · ${notificationTime(a.created_at)}</div></div>
+    </div>`).join('') : '<div class="empty">هنوز فعالیتی ثبت نشده.</div>';
+}
+function activityLabel(a) {
+  const map={insert:'ایجاد شد',update:'ویرایش شد',delete:'حذف شد'};
+  const names={personal_tasks:'کار',attendance:'حضور و غیاب',leads:'سرنخ',clients:'کارفرما',projects:'پروژه',contracts:'قرارداد',erp_tasks:'وظیفه',fixed_costs:'هزینه ثابت',tenders:'مناقصه / مسابقه',interactions:'پیگیری'};
+  return (names[a.entity_type]||a.entity_type)+' '+(map[a.action]||a.action);
 }
 
 // ================= پایپ‌لاین سرنخ‌ها =================
@@ -1725,7 +1880,9 @@ const EDIT_CONFIG = {
     { key: 'date', label: 'تاریخ', type: 'date' } ] },
   personal_tasks: { title: 'کار', fields: [
     { key: 'title', label: 'عنوان', type: 'text' },
-    { key: 'due_date', label: 'تاریخ', type: 'date' } ] },
+    { key: 'priority', label: 'اولویت', type: 'select', options: TASK_PRIORITIES },
+    { key: 'due_date', label: 'ددلاین', type: 'date' },
+    { key: 'status', label: 'وضعیت', type: 'select', options: ['new','progress','done'] } ] },
   members: { title: 'عضو تیم', fields: [
     { key: 'name', label: 'نام', type: 'text' },
     { key: 'department', label: 'واحد', type: 'select', options: DEPARTMENTS },
