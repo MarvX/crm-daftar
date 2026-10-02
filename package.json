@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "test": "node --test"
+    "test": "node --check app.js && node --check qr-security.js"
   },
   "dependencies": {
     "exceljs": "^4.4.0",
