@@ -314,6 +314,15 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:rgba(91,81,177
 .app-footer{max-width:1280px;margin:0 auto;padding:16px 22px 28px;display:flex;align-items:center;justify-content:space-between;gap:14px;color:var(--muted)}
 .footer-brand{display:flex;align-items:center;gap:9px}.footer-brand .footer-mark{width:31px;height:31px;border-radius:9px;font-size:15px;box-shadow:none}.footer-brand strong{display:block;color:var(--text);font-size:11px}.footer-brand span{display:block;font-size:9px}
 .footer-meta{display:flex;gap:14px;flex-wrap:wrap;justify-content:flex-end;font-size:10px}
+.task-source-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.task-source-card{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:10px;padding:12px;border:1px solid var(--border);border-radius:14px;background:var(--surface-2)}
+.task-source-card:hover{border-color:rgba(91,81,177,.34);box-shadow:var(--shadow-sm)}
+.task-source-icon{width:38px;height:38px;border-radius:10px;display:grid;place-items:center;background:rgba(91,81,177,.10);font-size:18px}
+.task-source-copy{display:grid;gap:1px;min-width:0}
+.task-source-copy strong{font-size:12px}
+.task-source-copy span{font-size:10px;color:var(--muted);font-weight:700}
+.task-source-copy small{font-size:9px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+@media(max-width:900px){.task-source-grid{grid-template-columns:1fr}}
 .qr-modal{max-width:470px}.qr-modal-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}.qr-modal-head h3{margin:0}.qr-modal-head p{font-size:11px;color:var(--muted);margin:5px 0 0}.qr-live-badge{padding:5px 8px;border-radius:999px;background:rgba(23,134,90,.10);color:var(--success);font-size:10px;font-weight:800;white-space:nowrap}
 .qr-code-box{min-height:270px;margin:16px auto 12px;padding:15px;display:grid;place-items:center;width:min(300px,100%);background:#fff;border:1px solid var(--border);border-radius:16px}.qr-code-box img,.qr-code-box canvas{max-width:100%;height:auto}.qr-expired{display:grid;place-items:center;min-height:220px;color:var(--danger);font-weight:800}.qr-modal-note{font-size:11px;line-height:1.9;color:var(--muted);margin:0}
 @media(max-width:1000px){.header-main{grid-template-columns:auto 1fr auto}.header-search-text{display:none}.header-search{max-width:360px}}
