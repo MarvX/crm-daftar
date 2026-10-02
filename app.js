@@ -525,9 +525,11 @@ const NAV_GROUPS = [
   { id: 'people', label: 'تیم و کارکنان' },
 ];
 
-const SECTION_TITLES = Object.fromEntries(
-  NAV_ITEMS.map(item => [item.id, item.label])
-);
+const SECTION_TITLES = {
+  ...Object.fromEntries(NAV_ITEMS.map(item => [item.id, item.label])),
+  'erp-tasks': 'وظایف مدیریتی',
+  'office-tasks': 'کارهای مرتبط با کارفرما'
+};
 
 let activeSectionId = 'dashboard';
 let openNavGroups = new Set(['main']);
