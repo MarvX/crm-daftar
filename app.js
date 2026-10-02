@@ -1171,6 +1171,28 @@ async function deleteTeamTask(id) {
   loadTeamTasks();
 }
 
+// ================= جست‌وجوی سراسری =================
+function openGlobalSearch(){
+  const root=document.getElementById('global-search-root'); if(!root)return;
+  root.innerHTML='<div class="overlay" onclick="if(event.target===this)closeGlobalSearch()"><div class="modal" style="max-width:620px;"><div class="row-top"><h3 style="margin:0;">⌕ جست‌وجوی سراسری</h3><button class="btn small secondary" onclick="closeGlobalSearch()">بستن</button></div><input id="global-search-input" placeholder="مثلاً: پلان طبقات، احمد، پروژه میرداماد..." autocomplete="off"><div id="global-search-results"></div></div></div>';
+  const input=document.getElementById('global-search-input'); input.addEventListener('input',()=>runGlobalSearch(input.value)); input.focus();
+}
+function closeGlobalSearch(){const root=document.getElementById('global-search-root');if(root)root.innerHTML='';}
+function runGlobalSearch(query){
+  const q=(query||'').trim().toLowerCase(); const box=document.getElementById('global-search-results'); if(!box)return;
+  if(!q){box.innerHTML='<div class="empty">نام کارفرما، پروژه، سرنخ یا کار را جست‌وجو کن.</div>';return;}
+  const results=[];
+  const add=(arr,type,icon,section,titleFn,metaFn)=>{(arr||[]).forEach(x=>{const title=String(titleFn(x)||''),meta=String(metaFn(x)||'');if((title+' '+meta).toLowerCase().includes(q))results.push({type,icon,section,title,meta});});};
+  add(leads,'سرنخ','🎯','pipeline',x=>x.name,x=>x.specialty_category||x.source);
+  add(clients,'کارفرما','👤','clients',x=>x.name,x=>x.type||x.contact_info);
+  add(projects,'پروژه','🏗️','projects',x=>x.title,x=>x.client_name||x.responsible_member);
+  add(contracts,'قرارداد','📄','contracts',x=>x.project_title,x=>x.status);
+  add(personalTasks,'کار','✓','tasks',x=>x.title,x=>x.due_date?'ددلاین: '+fmtDate(x.due_date):'بدون ددلاین');
+  if(currentProfile?.is_admin){add(erpTasks,'وظیفه','📌','erp-tasks',x=>x.title,x=>x.responsible_member_name||x.priority);add(fixedCosts,'هزینه','💰','costs',x=>x.title,x=>x.monthly_amount?(Number(x.monthly_amount).toLocaleString('fa-IR')+' تومان'):'');add(tenders,'مناقصه / مسابقه','🏆','tenders',x=>x.title,x=>x.issuing_body||x.status);add(members,'عضو تیم','👥','team',x=>x.name,x=>x.department||x.access_level);}
+  const shown=results.slice(0,30);
+  box.innerHTML=shown.length?shown.map((r,i)=>'<div class="search-result" style="animation-delay:'+Math.min(i,8)*20+'ms" onclick="closeGlobalSearch();switchSection(\''+r.section+'\')"><div class="sr-icon">'+r.icon+'</div><div><strong>'+escapeHtml(r.title)+'</strong><div class="sr-meta">'+escapeHtml(r.type)+' · '+escapeHtml(r.meta||'')+'</div></div></div>').join(''):'<div class="empty">چیزی پیدا نشد.</div>';
+}
+window.addEventListener('keydown',(e)=>{if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='k'){e.preventDefault();openGlobalSearch();}if(e.key==='Escape')closeGlobalSearch();});
 // ================= داشبورد =================
 function renderDashboard() {
   const activeLeads = leads.filter(l => l.stage !== 'برنده' && l.stage !== 'بازنده').length;
