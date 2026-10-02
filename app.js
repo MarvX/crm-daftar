@@ -503,20 +503,141 @@ async function resetUserPassword(userId, userName) {
 }
 
 const NAV_ITEMS = [
-  { id: 'dashboard', label: 'داشبورد' },
-  { id: 'attendance', label: 'ورود و خروج' },
-  { id: 'tasks', label: 'کارها' },
-  { id: 'calendar', label: 'تقویم' },
-  { id: 'profile', label: 'پروفایل' },
-  { id: 'employees', label: 'کارکنان' },
-  { id: 'pipeline', label: 'پایپ‌لاین سرنخ‌ها', adminOnly: true },
-  { id: 'clients', label: 'کارفرمایان', adminOnly: true },
-  { id: 'projects', label: 'پروژه‌ها', adminOnly: true },
-  { id: 'contracts', label: 'قراردادها و مطالبات', adminOnly: true },
-  { id: 'team', label: 'تیم', adminOnly: true },
-  { id: 'costs', label: 'هزینه‌های ثابت', adminOnly: true },
-  { id: 'tenders', label: 'مناقصه / مسابقه', adminOnly: true },
+  { id: 'dashboard', label: 'داشبورد', icon: '⌂', group: 'main' },
+  { id: 'attendance', label: 'ورود و خروج', icon: '◷', group: 'main' },
+  { id: 'tasks', label: 'کارها', icon: '✓', group: 'workspace' },
+  { id: 'calendar', label: 'تقویم', icon: '□', group: 'workspace' },
+  { id: 'pipeline', label: 'سرنخ‌ها', icon: '◇', group: 'crm', adminOnly: true },
+  { id: 'clients', label: 'کارفرمایان', icon: '♙', group: 'crm', adminOnly: true },
+  { id: 'projects', label: 'پروژه‌ها', icon: '⌂', group: 'crm', adminOnly: true },
+  { id: 'contracts', label: 'قراردادها', icon: '▤', group: 'finance', adminOnly: true },
+  { id: 'costs', label: 'هزینه‌های ثابت', icon: '◉', group: 'finance', adminOnly: true },
+  { id: 'tenders', label: 'مناقصه / مسابقه', icon: '◆', group: 'finance', adminOnly: true },
+  { id: 'employees', label: 'کارکنان', icon: '♙', group: 'people' },
+  { id: 'team', label: 'مدیریت تیم', icon: '⚙', group: 'people', adminOnly: true },
 ];
+
+const NAV_GROUPS = [
+  { id: 'main', label: 'اصلی' },
+  { id: 'workspace', label: 'فضای کاری' },
+  { id: 'crm', label: 'مدیریت دفتر', adminOnly: true },
+  { id: 'finance', label: 'مالی و فرصت‌ها', adminOnly: true },
+  { id: 'people', label: 'تیم و کارکنان' },
+];
+
+const SECTION_TITLES = Object.fromEntries(
+  NAV_ITEMS.map(item => [item.id, item.label])
+);
+
+let activeSectionId = 'dashboard';
+let openNavGroups = new Set(['main']);
+
+function buildNav(activeId = activeSectionId) {
+  const nav = document.getElementById('top-nav');
+  if (!nav) return;
+
+  activeSectionId = activeId || activeSectionId || 'dashboard';
+  const visibleItems = NAV_ITEMS.filter(item => !item.adminOnly || currentProfile?.is_admin);
+  const visibleGroups = NAV_GROUPS.filter(group =>
+    (!group.adminOnly || currentProfile?.is_admin) &&
+    visibleItems.some(item => item.group === group.id)
+  );
+
+  const activeItem = visibleItems.find(item => item.id === activeSectionId);
+  if (activeItem) openNavGroups.add(activeItem.group);
+
+  const groupHtml = visibleGroups.map(group => {
+    const items = visibleItems.filter(item => item.group === group.id);
+    const isOpen = openNavGroups.has(group.id);
+    return `
+      <section class="sidebar-group ${isOpen ? 'is-open' : ''}" data-nav-group="${group.id}">
+        <button type="button" class="sidebar-group-toggle" onclick="toggleNavGroup('${group.id}')" aria-expanded="${isOpen}">
+          <span>${group.label}</span><span class="sidebar-group-chevron">⌄</span>
+        </button>
+        <div class="sidebar-group-items">
+          ${items.map(item => `
+            <button type="button" class="sidebar-nav-item ${item.id === activeSectionId ? 'active' : ''}" data-id="${item.id}" onclick="switchSection('${item.id}')">
+              <span class="sidebar-nav-icon" aria-hidden="true">${item.icon || '•'}</span>
+              <span class="sidebar-nav-label">${item.label}</span>
+              ${item.id === activeSectionId ? '<span class="sidebar-nav-active-dot" aria-hidden="true"></span>' : ''}
+            </button>`).join('')}
+        </div>
+      </section>`;
+  }).join('');
+
+  nav.innerHTML = `
+    <div class="sidebar-head">
+      <div class="sidebar-brand">
+        <div class="sidebar-brand-mark">د</div>
+        <div><strong>دَست استودیو</strong><span>ERP مدیریت دفتر</span></div>
+      </div>
+      <button type="button" class="sidebar-mobile-close" onclick="setSidebarOpen(false)" aria-label="بستن منو">×</button>
+    </div>
+    <div class="sidebar-scroll">${groupHtml}</div>
+    <div class="sidebar-foot">
+      <div class="sidebar-foot-note"><span class="sidebar-foot-dot"></span><span>پنل داخلی دَست استودیو</span></div>
+    </div>`;
+}
+
+function toggleNavGroup(groupId) {
+  if (openNavGroups.has(groupId)) openNavGroups.delete(groupId);
+  else openNavGroups.add(groupId);
+  buildNav(activeSectionId);
+}
+
+function setSidebarOpen(open) {
+  document.body.classList.toggle('sidebar-open', !!open);
+  const backdrop = document.getElementById('sidebar-backdrop');
+  if (backdrop) backdrop.classList.toggle('hidden', !open);
+}
+
+function toggleSidebar() {
+  setSidebarOpen(!document.body.classList.contains('sidebar-open'));
+}
+
+function updateHeaderContext(id = activeSectionId) {
+  const title = document.getElementById('header-page-title');
+  const date = document.getElementById('header-page-date');
+  if (title) title.textContent = id === 'profile' ? 'پروفایل من' : (SECTION_TITLES[id] || 'داشبورد');
+  if (date) {
+    const now = new Date();
+    try {
+      const j = JalaaliLib.toJalaali(now.getFullYear(), now.getMonth() + 1, now.getDate());
+      date.textContent = `${toFaDigits(j.jd)} ${JALALI_MONTHS[j.jm - 1]} ${toFaDigits(j.jy)}`;
+    } catch (_) {
+      date.textContent = '';
+    }
+  }
+}
+
+function switchSection(id) {
+  activeSectionId = id;
+  updateHeaderContext(id);
+  buildNav(id);
+  document.querySelectorAll('main > div').forEach(d => d.classList.add('hidden'));
+  const section = document.getElementById('section-' + id);
+  if (!section) return;
+  section.classList.remove('hidden');
+  setSidebarOpen(false);
+
+  const renderMap = {
+    dashboard: renderDashboard, pipeline: renderPipeline, clients: renderClients,
+    projects: renderProjects, contracts: renderContracts, team: renderTeam,
+    profile: renderProfile, employees: renderEmployees,
+    'erp-tasks': renderErpTasks, costs: renderFixedCosts, tenders: renderTenders,
+    'office-tasks': renderOfficeTasks
+  };
+
+  if (id === 'attendance') renderAttendanceSection();
+  else if (id === 'tasks') renderTasksSection();
+  else if (id === 'calendar') renderCalendar();
+  else if (renderMap[id]) {
+    section.innerHTML = renderMap[id]();
+    if (id === 'dashboard') { enhanceDashboard(); loadDashboardExtras(); }
+    if (id === 'profile') { updateProfileSettingsUI(); }
+    if (id === 'employees') { loadEmployeeDirectory(); }
+  }
+}
 
 async function loadProfileAndShowApp() {
   const { data: profile } = await sb.from('profiles').select('*').eq('id', currentUser.id).single();
@@ -527,7 +648,8 @@ async function loadProfileAndShowApp() {
   const headerAvatar = document.getElementById('header-avatar');
   if (headerAvatar) headerAvatar.innerHTML = profileAvatarInner(currentProfile);
 
-  buildNav();
+  buildNav('dashboard');
+  updateHeaderContext('dashboard');
   initDarkMode();
   switchSection('dashboard');
   loadAttendanceStatus();
