@@ -140,6 +140,25 @@
   .task-overdue{border-inline-start:3px solid var(--danger)!important}
   .task-soon{border-inline-start:3px solid var(--warn)!important}
   .deadline-badge{font-size:10px;font-weight:800;padding:3px 7px;border-radius:999px;background:rgba(192,57,43,.1);color:var(--danger)}
+  .task-board{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:8px}
+  .task-board-column{background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:10px;min-height:180px}
+  .task-board-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:9px}
+  .task-board-head h3{font-size:13px;margin:0}
+  .task-board-head span{font-size:11px;background:var(--surface);border:1px solid var(--border);border-radius:999px;padding:3px 7px}
+  .task-kanban-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:10px;margin-bottom:8px;cursor:grab;transition:transform .16s,box-shadow .16s}
+  .task-kanban-card:hover{transform:translateY(-2px);box-shadow:0 6px 18px rgba(0,0,0,.07)}
+  .task-kanban-top{display:flex;gap:7px;justify-content:space-between;align-items:flex-start}
+  .task-kanban-top strong{font-size:12px;line-height:1.7}
+  .task-kanban-meta{font-size:10px;color:var(--muted);margin-top:7px}
+  .task-kanban-actions{display:flex;gap:5px;flex-wrap:wrap;margin-top:8px}
+  .task-kanban-actions .btn{font-size:10px;padding:4px 7px}
+  .team-work-row{padding:10px 0;border-bottom:1px solid var(--border)}
+  .team-work-row:last-child{border-bottom:0}
+  .team-work-person{display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:7px}
+  .team-work-person span{font-size:10px;color:var(--muted)}
+  .team-work-tasks{display:flex;gap:6px;flex-wrap:wrap}
+  .team-task-chip{font-size:10px;padding:5px 8px;border:1px solid var(--border);border-radius:8px;background:var(--bg)}
+  @media(max-width:800px){.task-board{grid-template-columns:1fr}.task-board-column{min-height:120px}}
   .priority-badge{display:inline-flex;align-items:center;padding:3px 8px;border-radius:999px;font-size:10px;font-weight:800;white-space:nowrap}
   .priority-high{background:rgba(192,57,43,.12);color:var(--danger)}
   .priority-mid{background:rgba(184,134,11,.12);color:var(--warn)}
