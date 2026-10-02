@@ -66,9 +66,6 @@
   .status-new { background: #dbeafe; color: #1e40af; }
   .status-progress { background: #fef3c7; color: #92400e; }
   .status-done { background: #d1fae5; color: #065f46; }
-  #login-screen { max-width: 360px; margin: 80px auto; text-align: center; }
-  #login-screen input { width: 100%; margin-bottom: 10px; }
-  #login-screen button { width: 100%; }
   .error-msg { color: #dc2626; font-size: 13px; margin-top: 8px; }
   .counter { font-size: 40px; font-weight: bold; text-align: center; margin: 20px 0; color: var(--navy-light); }
   .user-badge { font-size: 12px; opacity: 0.85; }
@@ -81,6 +78,57 @@
   .jdate { display: inline-flex; gap: 4px; flex: 1; min-width: 230px; }
   .row .jdate select, .modal .jdate select, .jdate select { flex: 1; min-width: 0; width: auto; padding: 9px 4px; }
   .modal .jdate { display: flex; width: 100%; }
+
+  /* ===== LOGIN ===== */
+  #login-screen{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-content:center;padding:calc(24px + env(safe-area-inset-top)) 16px calc(24px + env(safe-area-inset-bottom));background:radial-gradient(1100px 560px at 100% 0%,rgba(74,65,147,.16),transparent 60%),var(--bg)}
+  .login-shell{width:100%;max-width:880px;display:grid;grid-template-columns:1fr 1fr;background:var(--surface);border:1px solid var(--border);border-radius:20px;overflow:hidden;box-shadow:0 20px 60px rgba(30,25,80,.12);animation:modalIn .3s cubic-bezier(.2,.8,.2,1) both}
+  .login-brand{background:linear-gradient(160deg,var(--navy) 0%,var(--navy-light) 100%);color:#fff;padding:44px 36px;display:flex;flex-direction:column;justify-content:center;gap:14px}
+  .login-brand img{width:56px;height:56px;border-radius:14px;background:rgba(255,255,255,.14)}
+  .login-brand h2{font-size:24px;margin:0;font-weight:800}
+  .login-brand p{margin:0;font-size:14px;line-height:2;opacity:.88}
+  .login-points{list-style:none;padding:0;margin:8px 0 0;display:grid;gap:10px;font-size:13px}
+  .login-points li{display:flex;gap:10px;align-items:center;opacity:.92}
+  .login-points li::before{content:'';width:7px;height:7px;border-radius:50%;background:#fff;opacity:.7;flex:none}
+  .login-card{padding:44px 36px;display:flex;flex-direction:column}
+  .login-card h1{font-size:22px;margin:0 0 6px;font-weight:800}
+  .login-sub{margin:0 0 24px;font-size:13px;color:var(--muted);line-height:1.9}
+  .login-card label{font-size:13px;font-weight:600;margin:0 0 6px}
+  .login-card input{width:100%;font-size:15px;padding:12px 14px;border-radius:10px;margin-bottom:16px;text-align:left}
+  .login-card input:focus{outline:none;border-color:var(--navy-light);box-shadow:0 0 0 3px rgba(74,65,147,.18);background:var(--surface)}
+  .pw-field{position:relative}
+  .pw-field input{padding-right:76px}
+  .pw-toggle{position:absolute;right:7px;top:7px;height:32px;padding:0 10px;border:none;border-radius:8px;background:rgba(52,45,115,.08);color:var(--navy-light);font-family:inherit;font-size:12px;font-weight:600;cursor:pointer}
+  .pw-toggle:hover{background:rgba(52,45,115,.14)}
+  #login-error{background:rgba(192,57,43,.08);border:1px solid rgba(192,57,43,.25);color:var(--danger);border-radius:10px;padding:10px 12px;margin:-4px 0 14px;font-size:13px}
+  #login-error:empty{display:none}
+  .login-submit{width:100%;font-size:15px;font-weight:700;padding:13px;border-radius:10px;margin-top:4px}
+  .login-submit:disabled{opacity:.7;cursor:wait}
+  .login-link{background:none;border:none;color:var(--navy-light);font-family:inherit;font-size:13px;margin-top:14px;cursor:pointer;align-self:center;padding:6px}
+  .login-link:hover{text-decoration:underline}
+  body.dark .login-brand{background:linear-gradient(160deg,#2a2463 0%,#4b43a0 100%)}
+  body.dark .login-card input{border-color:#3b3c4d}
+  body.dark .pw-toggle{background:rgba(129,120,220,.18);color:#c9c4ff}
+  body.dark .pw-toggle:hover{background:rgba(129,120,220,.28)}
+  @media(max-width:720px){
+    .login-shell{grid-template-columns:1fr;max-width:420px}
+    .login-brand{padding:28px 24px;gap:8px}
+    .login-brand img{width:44px;height:44px}
+    .login-brand h2{font-size:20px}
+    .login-points{display:none}
+    .login-card{padding:28px 24px}
+  }
+  /* گوشی‌های کوتاه (مثل آیفون SE): دکمه‌ی ورود بدون اسکرول دیده شود */
+  @media(max-width:720px) and (max-height:700px){
+    #login-screen{align-items:flex-start;padding-top:calc(12px + env(safe-area-inset-top));padding-bottom:12px}
+    .login-brand{flex-direction:row;align-items:center;padding:16px 20px;gap:12px}
+    .login-brand img{width:36px;height:36px;border-radius:10px}
+    .login-brand h2{font-size:18px}
+    .login-brand p{display:none}
+    .login-card{padding:20px}
+    .login-card h1{font-size:19px}
+    .login-sub{margin-bottom:14px}
+    .login-card input{padding:10px 12px;margin-bottom:12px}
+  }
 
   body.dark { --bg:#11121a; --surface:#1a1b26; --text:#f1f1f5; --muted:#a6a7b5; --border:#30313f; --navy:#4b43a0; --navy-light:#8178dc; }
   body.dark input, body.dark select, body.dark textarea { background:#151621; color:var(--text); }
@@ -214,13 +262,33 @@
 </head>
 <body>
 
-<div id="login-screen" class="card">
-  <h1>ورود به پنل دفتر</h1>
-  <input type="text" id="login-username" placeholder="نام کاربری">
-  <input type="password" id="login-password" placeholder="رمز عبور">
-  <button class="btn" style="width:100%;" onclick="doLogin()">ورود</button>
-  <button class="btn secondary" style="width:100%;margin-top:8px;" onclick="showForgotPassword()">فراموشی رمز عبور</button>
-  <div id="login-error" class="error-msg"></div>
+<div id="login-screen">
+  <div class="login-shell">
+    <aside class="login-brand">
+      <img src="/icons/apple-touch-icon.png" alt="">
+      <h2>دفتر دَست</h2>
+      <p>پروژه‌ها، کارفرمایان، قراردادها و تیم؛ همه در یک پنل.</p>
+      <ul class="login-points">
+        <li>ثبت ورود و خروج با یک کلیک یا QR</li>
+        <li>کارها و ددلاین‌ها روی تقویم شمسی</li>
+        <li>پیگیری سرنخ تا قرارداد و وصول مطالبات</li>
+      </ul>
+    </aside>
+    <form class="login-card" id="login-form" onsubmit="handleLoginSubmit(event)" novalidate>
+      <h1>ورود به پنل دفتر</h1>
+      <p class="login-sub">با نام کاربری و رمزی که مدیر دفتر برایت ساخته وارد شو.</p>
+      <label for="login-username">نام کاربری</label>
+      <input type="text" id="login-username" name="username" autocomplete="username" autocapitalize="off" autocorrect="off" spellcheck="false" dir="ltr" required>
+      <label for="login-password">رمز عبور</label>
+      <div class="pw-field">
+        <input type="password" id="login-password" name="password" autocomplete="current-password" dir="ltr" required>
+        <button type="button" class="pw-toggle" id="pw-toggle" onclick="togglePasswordVisibility()" aria-label="نمایش رمز">نمایش</button>
+      </div>
+      <div id="login-error" class="error-msg" role="alert" aria-live="polite"></div>
+      <button type="submit" class="btn login-submit" id="login-submit">ورود</button>
+      <button type="button" class="login-link" onclick="showForgotPassword()">رمز عبورم را فراموش کرده‌ام</button>
+    </form>
+  </div>
 </div>
 
 <div id="app-root" class="hidden">
@@ -264,5 +332,45 @@
 <div id="global-search-root"></div>
 
 <script src="app.js"></script>
+<script>
+  // صفحه‌ی ورود هم از تنظیم حالت تیره‌ی کاربر پیروی کند
+  if (localStorage.getItem('dast-dark') === '1') document.body.classList.add('dark');
+
+  async function handleLoginSubmit(e) {
+    e.preventDefault();
+    const u = document.getElementById('login-username');
+    const p = document.getElementById('login-password');
+    const err = document.getElementById('login-error');
+    const btn = document.getElementById('login-submit');
+    err.innerText = '';
+    if (!u.value.trim() || !p.value) {
+      err.innerText = 'نام کاربری و رمز عبور را وارد کن.';
+      (u.value.trim() ? p : u).focus();
+      return;
+    }
+    btn.disabled = true;
+    btn.innerText = 'در حال ورود...';
+    try {
+      await doLogin();
+    } catch (_) {
+      err.innerText = 'اتصال برقرار نشد، دوباره تلاش کن.';
+    } finally {
+      btn.disabled = false;
+      btn.innerText = 'ورود';
+      if (err.innerText) p.select();
+      else p.value = '';
+    }
+  }
+
+  function togglePasswordVisibility() {
+    const p = document.getElementById('login-password');
+    const b = document.getElementById('pw-toggle');
+    const show = p.type === 'password';
+    p.type = show ? 'text' : 'password';
+    b.innerText = show ? 'پنهان' : 'نمایش';
+    b.setAttribute('aria-label', show ? 'پنهان کردن رمز' : 'نمایش رمز');
+    p.focus();
+  }
+</script>
 </body>
 </html>
