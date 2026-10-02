@@ -507,6 +507,8 @@ const NAV_ITEMS = [
   { id: 'attendance', label: 'ورود و خروج' },
   { id: 'tasks', label: 'کارها' },
   { id: 'calendar', label: 'تقویم' },
+  { id: 'profile', label: 'پروفایل' },
+  { id: 'employees', label: 'کارکنان' },
   { id: 'pipeline', label: 'پایپ‌لاین سرنخ‌ها', adminOnly: true },
   { id: 'clients', label: 'کارفرمایان', adminOnly: true },
   { id: 'projects', label: 'پروژه‌ها', adminOnly: true },
@@ -522,6 +524,8 @@ async function loadProfileAndShowApp() {
   document.getElementById('login-screen').classList.add('hidden');
   document.getElementById('app-root').classList.remove('hidden');
   document.getElementById('user-badge').innerText = `${currentProfile.full_name || ''} ${currentProfile.role_title ? '— ' + currentProfile.role_title : ''}`;
+  const headerAvatar = document.getElementById('header-avatar');
+  if (headerAvatar) headerAvatar.innerHTML = profileAvatarInner(currentProfile);
 
   buildNav();
   initDarkMode();
@@ -744,6 +748,7 @@ function switchSection(id) {
   const renderMap = {
     dashboard: renderDashboard, pipeline: renderPipeline, clients: renderClients,
     projects: renderProjects, contracts: renderContracts, team: renderTeam,
+    profile: renderProfile, employees: renderEmployees,
     'erp-tasks': renderErpTasks, costs: renderFixedCosts, tenders: renderTenders,
     'office-tasks': renderOfficeTasks
   };
@@ -754,7 +759,149 @@ function switchSection(id) {
   else if (renderMap[id]) {
     section.innerHTML = renderMap[id]();
     if (id === 'dashboard') { enhanceDashboard(); loadDashboardExtras(); }
+    if (id === 'profile') { updateProfileSettingsUI(); }
+    if (id === 'employees') { loadEmployeeDirectory(); }
   }
+}
+
+function avatarInitial(profile) {
+  const name = String(profile?.full_name || 'د').trim();
+  return escapeHtml(name ? Array.from(name)[0] : 'د');
+}
+function profileAvatarInner(profile) {
+  const value = String(profile?.avatar_url || '');
+  if (value.startsWith('emoji:')) return escapeHtml(value.slice(6) || '👤');
+  if (/^https?:\/\//i.test(value)) {
+    return '<img src="' + escapeHtml(value) + '" alt="آواتار" loading="lazy">';
+  }
+  return avatarInitial(profile);
+}
+function profileAvatarMarkup(profile, size = '') {
+  return '<div class="profile-avatar ' + escapeHtml(size) + '">' + profileAvatarInner(profile) + '</div>';
+}
+const PROFILE_AVATAR_PRESETS = ['emoji:📐','emoji:🧑‍💻','emoji:🏗️','emoji:🎨','emoji:💼','emoji:🧠','emoji:🖥️','emoji:🚀'];
+
+function renderProfile() {
+  const p = currentProfile || {};
+  const currentAvatar = p.avatar_url || '';
+  const preset = PROFILE_AVATAR_PRESETS.includes(currentAvatar) ? currentAvatar : (currentAvatar.startsWith('http') ? '' : currentAvatar);
+  return `
+    <div class="row-top"><div><h2>پروفایل من</h2><div class="profile-subtitle">اطلاعات حساب، ظاهر و تنظیمات شخصی</div></div><button class="btn small secondary" onclick="switchSection('employees')">مشاهده کارکنان</button></div>
+    <div class="profile-layout">
+      <div class="card profile-hero-card">
+        <div class="profile-hero">
+          ${profileAvatarMarkup(p, 'xl')}
+          <div><h3>${escapeHtml(p.full_name || 'کاربر دفتر')}</h3><div class="profile-role">${escapeHtml(p.role_title || (p.is_admin ? 'مدیر دفتر' : 'عضو تیم'))}</div><div class="profile-meta">${escapeHtml(p.department || 'واحد ثبت نشده')}</div></div>
+        </div>
+        <div class="profile-account-note">این صفحه برای اطلاعاتی است که خودت می‌توانی ویرایش کنی. سطح دسترسی توسط مدیر دفتر کنترل می‌شود.</div>
+      </div>
+      <div class="card">
+        <div class="row-top"><h3>ویرایش اطلاعات</h3><span class="sr-meta">اطلاعات نمایشی</span></div>
+        <div class="profile-form-grid">
+          <label>نام و نام خانوادگی<input id="profile-full-name" value="${escapeHtml(p.full_name || '')}" maxlength="80"></label>
+          <label>واحد / دپارتمان<input id="profile-department" value="${escapeHtml(p.department || '')}" maxlength="80" placeholder="مثلاً طراحی معماری"></label>
+        </div>
+        <label>سمت <input value="${escapeHtml(p.role_title || (p.is_admin ? 'مدیر دفتر' : 'عضو تیم'))}" disabled></label>
+        <label>معرفی کوتاه<textarea id="profile-bio" rows="3" maxlength="240" placeholder="مثلاً معمار، مدل‌ساز و مسئول پروژه‌های...">${escapeHtml(p.bio || '')}</textarea></label>
+        <div class="profile-avatar-editor">
+          <div><strong>آواتار</strong><div class="sr-meta">یک آواتار آماده انتخاب کن یا لینک عکس خودت را وارد کن.</div></div>
+          <div class="profile-avatar-preview" id="profile-avatar-preview">${profileAvatarMarkup(p,'lg')}</div>
+          <input type="hidden" id="profile-avatar-value" value="${escapeHtml(preset || '')}">
+          <div class="avatar-presets">${PROFILE_AVATAR_PRESETS.map(v=>'<button type="button" class="avatar-option '+(v===preset?'selected':'')+'" data-value="'+escapeHtml(v)+'" onclick="chooseProfileAvatar(this.dataset.value)">'+escapeHtml(v.slice(6))+'</button>').join('')}</div>
+          <label class="avatar-url-label">یا لینک مستقیم عکس<input id="profile-avatar-url" type="url" dir="ltr" placeholder="https://..." value="${escapeHtml(/^https?:\/\//i.test(currentAvatar) ? currentAvatar : '')}" oninput="previewProfileAvatarUrl(this.value)"></label>
+        </div>
+        <div class="modal-actions"><button class="btn" onclick="saveMyProfile()">ذخیره تغییرات</button></div>
+      </div>
+    </div>
+    <div class="profile-settings-grid">
+      <div class="card">
+        <div class="profile-setting-head"><span class="profile-setting-icon">🎨</span><div><strong>ظاهر پنل</strong><div class="sr-meta">حالت روشن یا تیره</div></div></div>
+        <button class="btn small secondary" onclick="toggleDarkMode();updateProfileSettingsUI()">تغییر حالت نمایش</button>
+      </div>
+      <div class="card">
+        <div class="profile-setting-head"><span class="profile-setting-icon">🔔</span><div><strong>اعلان‌ها</strong><div id="profile-notification-status" class="sr-meta">در حال بررسی...</div></div></div>
+        <button class="btn small secondary" onclick="enableNotifications();setTimeout(updateProfileSettingsUI,300)">فعال‌سازی اعلان</button>
+      </div>
+      <div class="card">
+        <div class="profile-setting-head"><span class="profile-setting-icon">🔐</span><div><strong>امنیت حساب</strong><div class="sr-meta">رمز ورود را هر زمان خواستی تغییر بده</div></div></div>
+        <button class="btn small secondary" onclick="changeMyPassword()">تغییر رمز عبور</button>
+      </div>
+      <div class="card">
+        <div class="profile-setting-head"><span class="profile-setting-icon">📅</span><div><strong>تقویم گوگل</strong><div id="profile-calendar-status" class="sr-meta">از هدر هم قابل مدیریت است</div></div></div>
+        <button class="btn small secondary" onclick="connectCalendar()">اتصال تقویم</button>
+      </div>
+    </div>`;
+}
+function updateProfileSettingsUI() {
+  const notif = document.getElementById('profile-notification-status');
+  if (notif) {
+    const supported = pushSupported();
+    const granted = supported && 'Notification' in window && Notification.permission === 'granted';
+    notif.textContent = granted ? 'اعلان روی این دستگاه فعال است' : supported ? 'اعلان هنوز فعال نشده' : 'این مرورگر اعلان وب را پشتیبانی نمی‌کند';
+  }
+  const cal = document.getElementById('profile-calendar-status');
+  if (cal) cal.textContent = googleStatus?.me?.needs_reconnect ? 'اتصال نیاز به بازسازی دارد' : googleStatus?.me?.connected ? 'تقویم متصل است' : 'تقویم هنوز متصل نیست';
+}
+function chooseProfileAvatar(value) {
+  const input=document.getElementById('profile-avatar-value');
+  const url=document.getElementById('profile-avatar-url');
+  if(input) input.value=value||'';
+  if(url) url.value='';
+  document.querySelectorAll('.avatar-option').forEach(b=>b.classList.toggle('selected',b.dataset.value===value));
+  const box=document.getElementById('profile-avatar-preview');
+  if(box) box.innerHTML=profileAvatarMarkup({full_name:currentProfile?.full_name||'د',avatar_url:value},'lg');
+}
+function previewProfileAvatarUrl(url) {
+  if(String(url||'').trim()) document.querySelectorAll('.avatar-option').forEach(b=>b.classList.remove('selected'));
+  const box=document.getElementById('profile-avatar-preview');
+  if(box) box.innerHTML=profileAvatarMarkup({full_name:currentProfile?.full_name||'د',avatar_url:String(url||'').trim()},'lg');
+}
+async function saveMyProfile() {
+  const full_name=document.getElementById('profile-full-name')?.value.trim();
+  const department=document.getElementById('profile-department')?.value.trim();
+  const bio=document.getElementById('profile-bio')?.value.trim();
+  const avatarUrl=document.getElementById('profile-avatar-url')?.value.trim();
+  const avatarPreset=document.getElementById('profile-avatar-value')?.value || '';
+  if(!full_name){alert('نام و نام خانوادگی را وارد کن.');return;}
+  if(avatarUrl && !/^https?:\/\//i.test(avatarUrl)){alert('لینک آواتار باید با http یا https شروع شود.');return;}
+  const payload={full_name,department,bio,avatar_url:avatarUrl||avatarPreset||null};
+  const {data,error}=await sb.from('profiles').update(payload).eq('id',currentUser.id).select('*').single();
+  if(error){alert('ذخیره پروفایل انجام نشد: '+error.message);return;}
+  currentProfile=data||{...currentProfile,...payload};
+  const badge=document.getElementById('user-badge'); if(badge) badge.innerText=`${currentProfile.full_name||''} ${currentProfile.role_title ? '— '+currentProfile.role_title : ''}`;
+  const headerAvatar=document.getElementById('header-avatar'); if(headerAvatar) headerAvatar.innerHTML=profileAvatarInner(currentProfile);
+  renderProfile();
+  updateProfileSettingsUI();
+  showToast('پروفایل با موفقیت ذخیره شد ✅');
+}
+function renderEmployees() {
+  return `
+    <div class="row-top"><div><h2>کارکنان</h2><div class="profile-subtitle">فهرست اعضای دفتر برای دسترسی سریع به تیم</div></div><button class="btn small secondary" onclick="switchSection('profile')">پروفایل من</button></div>
+    <div class="card">
+      <div class="row-top"><div><h3 style="margin:0;">اعضای دفتر</h3><div class="sr-meta">اطلاعاتی که اعضای تیم برای شناخت همدیگر ثبت کرده‌اند.</div></div><input id="employee-search" oninput="filterEmployeeDirectory(this.value)" placeholder="جست‌وجوی نام یا واحد" style="max-width:280px;"></div>
+      <div id="employee-directory-grid" class="employee-directory-grid"><div class="empty">در حال بارگذاری کارکنان...</div></div>
+    </div>`;
+}
+let employeeDirectory=[];
+async function loadEmployeeDirectory() {
+  const box=document.getElementById('employee-directory-grid'); if(!box)return;
+  const {data,error}=await sb.from('employee_directory').select('*').order('full_name',{ascending:true});
+  if(error){box.innerHTML='<div class="empty">فهرست کارکنان فعلاً در دسترس نیست.</div>';return;}
+  employeeDirectory=data||[];
+  renderEmployeeDirectory(employeeDirectory);
+}
+function filterEmployeeDirectory(query) {
+  const q=String(query||'').trim().toLowerCase();
+  renderEmployeeDirectory(employeeDirectory.filter(p=>(String(p.full_name||'')+' '+String(p.role_title||'')+' '+String(p.department||'')+' '+String(p.bio||'')).toLowerCase().includes(q)));
+}
+function renderEmployeeDirectory(rows) {
+  const box=document.getElementById('employee-directory-grid'); if(!box)return;
+  box.innerHTML=rows.length ? rows.map(p=>`
+    <article class="employee-card">
+      <div class="employee-card-head">${profileAvatarMarkup(p,'lg')}<div><strong>${escapeHtml(p.full_name||'عضو تیم')}</strong><div class="profile-role">${escapeHtml(p.role_title||'عضو تیم')}</div></div></div>
+      <div class="employee-meta-row"><span>🏢</span><span>${escapeHtml(p.department||'واحد ثبت نشده')}</span></div>
+      ${p.bio?`<p class="employee-bio">${escapeHtml(p.bio)}</p>`:''}
+    </article>`).join('') : '<div class="empty">عضوی مطابق جست‌وجوی تو پیدا نشد.</div>';
 }
 
 async function refreshAllErpData() {
