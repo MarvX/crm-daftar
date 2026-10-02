@@ -2,6 +2,9 @@
   "name": "crm-daftar",
   "version": "1.0.0",
   "type": "module",
+  "scripts": {
+    "test": "node --test"
+  },
   "dependencies": {
     "exceljs": "^4.4.0",
     "jalaali-js": "^1.2.6",
