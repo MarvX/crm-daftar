@@ -349,6 +349,8 @@ const TENDER_STATUSES = ["در حال بررسی", "ثبت‌نام‌شده", "
 
 let currentUser = null, currentProfile = null;
 let attendanceTimer = null, activeCheckIn = null;
+let attendanceReady = false;
+let attendanceStatusPromise = null;
 let notificationChannel = null;
 let notifications = [];
 let allProfiles = [];
@@ -1146,9 +1148,12 @@ function getAttendanceElapsedLabel(startTime) {
 }
 
 async function loadAttendanceStatus() {
-  const { data, error } = await sb.from('attendance').select('*').eq('user_id', currentUser.id).is('check_out', null).order('created_at', { ascending: false }).limit(1);
-  if (error) { showToast('وضعیت حضور خوانده نشد.'); return; }
-  const btn = document.getElementById('attendance-btn');
+  if (attendanceStatusPromise) return attendanceStatusPromise;
+  attendanceReady = false;
+  attendanceStatusPromise = (async () => {
+    const { data, error } = await sb.from('attendance').select('*').eq('user_id', currentUser.id).is('check_out', null).order('created_at', { ascending: false }).limit(1);
+    if (error) { showToast('وضعیت حضور خوانده نشد.'); return; }
+    const btn = document.getElementById('attendance-btn');
   const chip = document.getElementById('attendance-status-chip');
   if (data && data[0]) {
     activeCheckIn = data[0];
@@ -1163,8 +1168,11 @@ async function loadAttendanceStatus() {
     if (c) c.innerText = '--:--:--';
     clearInterval(attendanceTimer);
   }
-  updateDashboardAttendanceQuickAction();
-  loadMyAttendanceHistory();
+    updateDashboardAttendanceQuickAction();
+    loadMyAttendanceHistory();
+    attendanceReady = true;
+  })().finally(() => { attendanceStatusPromise = null; });
+  return attendanceStatusPromise;
 }
 
 function startCounter(startTime) {
@@ -1183,8 +1191,10 @@ function startCounter(startTime) {
 }
 
 async function toggleAttendance() {
-  const buttons = [document.getElementById('attendance-btn'), document.getElementById('dashboard-attendance-btn')].filter(Boolean);
   if (toggleAttendance.busy) return;
+  if (!attendanceReady) await loadAttendanceStatus();
+  if (!attendanceReady) return;
+  const buttons = [document.getElementById('attendance-btn'), document.getElementById('dashboard-attendance-btn')].filter(Boolean);
   toggleAttendance.busy = true;
   buttons.forEach(b => { b.disabled = true; b.style.opacity = '.7'; });
 
