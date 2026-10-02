@@ -112,6 +112,59 @@
   .calendar-holiday-detail{background:rgba(192,57,43,.09);border:1px solid rgba(192,57,43,.25);color:#c0392b;border-radius:9px;padding:10px;margin-bottom:10px;font-size:12px;font-weight:700}
   body.dark .calendar-day.holiday{background:rgba(192,57,43,.16);border-color:#e06b5c}
   body.dark .calendar-day.holiday .calendar-day-number,body.dark .calendar-holiday-mark,body.dark .calendar-holiday-detail{color:#ff8b7d}
+
+  /* ===== DAST UX / MOTION ===== */
+  html{scroll-behavior:smooth}
+  body{overflow-x:hidden}
+  #app-root{animation:appReveal .35s ease-out both}
+  main>div:not(.hidden){animation:sectionIn .22s ease-out both}
+  .card,.stat,.stage-col,.lead-card{transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease}
+  .card:hover,.stat:hover{transform:translateY(-1px);box-shadow:0 6px 22px rgba(30,25,80,.07)}
+  .lead-card:hover{transform:translateY(-2px);box-shadow:0 5px 16px rgba(30,25,80,.08)}
+  button,.btn,input,select,textarea{transition:transform .12s ease,box-shadow .15s ease,border-color .15s ease,background-color .15s ease}
+  button:active,.btn:active{transform:scale(.97)}
+  .btn:hover{box-shadow:0 4px 12px rgba(52,45,115,.16)}
+  nav button{transition:background-color .18s ease,color .18s ease,border-color .18s ease,transform .15s ease}
+  nav button:hover{transform:translateY(-1px)}
+  nav button.active{box-shadow:0 3px 12px rgba(52,45,115,.16)}
+  tr{transition:background-color .15s ease}
+  tbody tr:hover{background:rgba(52,45,115,.035)}
+  .stat .num{animation:countIn .35s ease-out both}
+  .overlay{animation:overlayIn .18s ease-out both;backdrop-filter:blur(2px)}
+  .modal{animation:modalIn .22s cubic-bezier(.2,.8,.2,1) both}
+  .search-result{animation:resultIn .18s ease-out both}
+  .quick-action{display:flex;align-items:center;gap:10px;text-align:right;padding:12px;border:1px solid var(--border);border-radius:12px;background:var(--surface);cursor:pointer;color:var(--text);font-family:inherit}
+  .quick-action:hover{transform:translateY(-2px);border-color:var(--navy-light);box-shadow:0 6px 18px rgba(30,25,80,.08)}
+  .quick-action .qa-icon{width:38px;height:38px;border-radius:10px;background:rgba(52,45,115,.1);display:grid;place-items:center;font-size:18px;flex:none}
+  .quick-actions{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+  .task-overdue{border-inline-start:3px solid var(--danger)!important}
+  .task-soon{border-inline-start:3px solid var(--warn)!important}
+  .deadline-badge{font-size:10px;font-weight:800;padding:3px 7px;border-radius:999px;background:rgba(192,57,43,.1);color:var(--danger)}
+  .deadline-badge.soon{background:rgba(184,134,11,.12);color:var(--warn)}
+  #global-search-input{width:100%;font-size:15px;padding:12px 14px}
+  #global-search-results{max-height:52vh;overflow:auto;margin-top:10px}
+  .search-result{display:flex;align-items:center;gap:10px;padding:11px;border:1px solid var(--border);border-radius:10px;margin-bottom:7px;cursor:pointer;background:var(--surface)}
+  .search-result:hover{border-color:var(--navy-light);transform:translateY(-1px)}
+  .search-result .sr-icon{width:34px;height:34px;border-radius:9px;background:rgba(52,45,115,.1);display:grid;place-items:center}
+  .search-result .sr-meta{font-size:10px;color:var(--muted);margin-top:2px}
+  @keyframes appReveal{from{opacity:0}to{opacity:1}}
+  @keyframes sectionIn{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:none}}
+  @keyframes modalIn{from{opacity:0;transform:translateY(8px) scale(.98)}to{opacity:1;transform:none}}
+  @keyframes overlayIn{from{opacity:0}to{opacity:1}}
+  @keyframes countIn{from{opacity:0;transform:translateY(5px) scale(.96)}to{opacity:1;transform:none}}
+  @keyframes resultIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+  @media(max-width:800px){.quick-actions{grid-template-columns:repeat(2,minmax(0,1fr))}}
+  @media(max-width:520px){
+    header{padding-inline:12px}
+    header>div:last-child{width:100%;display:flex;gap:6px;overflow-x:auto;padding-bottom:2px}
+    header>div:last-child .btn{white-space:nowrap}
+    main{padding-inline:10px}
+    .quick-actions{grid-template-columns:1fr 1fr}
+    .card{padding:13px}
+  }
+  @media(prefers-reduced-motion:reduce){
+    *,*::before,*::after{scroll-behavior:auto!important;animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important}
+  }
 </style>
 </head>
 <body>
@@ -136,6 +189,7 @@
       <button class="btn secondary hidden" id="install-btn" onclick="installApp()" style="color:#fff;border-color:#fff;">📲 نصب اپ</button>
       <button class="btn secondary hidden" id="dark-btn" onclick="toggleDarkMode()" style="color:#fff;border-color:#fff;">🌙 حالت تیره</button>
       <button class="btn secondary hidden" id="notif-btn" onclick="enableNotifications()" style="color:#fff;border-color:#fff;">🔔 فعال‌سازی اعلان</button>
+      <button class="btn secondary" id="search-btn" onclick="openGlobalSearch()" style="color:#fff;border-color:#fff;">⌕ جستجو</button>
       <button class="btn secondary" onclick="changeMyPassword()" style="color:#fff;border-color:#fff;">🔐 تغییر رمز</button>
       <button class="btn secondary" onclick="doLogout()" style="color:#fff;border-color:#fff;">خروج</button>
     </div>
@@ -161,6 +215,7 @@
 </div>
 
 <div id="edit-modal-root"></div>
+<div id="global-search-root"></div>
 
 <script src="app.js"></script>
 </body>
