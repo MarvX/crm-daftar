@@ -531,6 +531,7 @@ async function loadProfileAndShowApp() {
   refreshGoogleStatus();
   startTaskNotifications();
   startNotificationCenter();
+  setTimeout(() => window.tryPendingAttendanceQR?.(), 250);
 
   if (currentProfile.is_admin) {
     const { data: profs } = await sb.from('profiles').select('*');
@@ -947,27 +948,6 @@ function calendarGoToday() {
 
 
 
-async function openAttendanceQR() {
-  const root=document.getElementById('edit-modal-root');
-  root.innerHTML=`<div class="overlay" onclick="if(event.target===this)this.remove()"><div class="modal" style="text-align:center">
-    <h3>📱 QR ورود و خروج دفتر</h3>
-    <p style="font-size:12px;color:var(--muted)">این QR را چاپ کن و جلوی ورودی دفتر بگذار. کارمند فقط اسکن می‌کند.</p>
-    <div id="attendance-qr" style="display:flex;justify-content:center;margin:16px"></div>
-    <p style="font-size:11px;color:var(--muted)">بعد از اسکن، CRM باید روی گوشی باز باشد و کاربر وارد حسابش شده باشد.</p>
-    <div class="modal-actions"><button class="btn secondary" onclick="this.closest('.overlay').remove()">بستن</button></div>
-  </div></div>`;
-  new QRCode(document.getElementById('attendance-qr'),{text:location.origin+'/?attendance_qr=DAST-OFFICE-203ee7c4cfcd4e9d8b7d95ed05ab5f83',width:240,height:240});
-}
-async function consumeAttendanceQR(token) {
-  const {data,error}=await sb.from('attendance_qr_tokens').select('*').eq('token',token).gt('expires_at',new Date().toISOString()).single();
-  if(error||!data){showToast('QR منقضی یا نامعتبر است');return;}
-  const active = await sb.from('attendance').select('*').eq('user_id',currentUser.id).is('check_out',null).order('created_at',{ascending:false}).limit(1);
-  const row=active.data?.[0];
-  const action=row?'خروج':'ورود';
-  await toggleAttendance();
-  showToast(action+' شما با QR ثبت شد ✅');
-}
-
 // ================= حضور و غیاب =================
 function renderAttendanceSection() {
   const el = document.getElementById('section-attendance');
@@ -1118,11 +1098,23 @@ function taskDueMeta(t) {
   const label = state === 'overdue' ? 'عقب‌افتاده' : state === 'today' ? 'امروز' : fmtDate(t.due_date);
   return `<span class="task-due ${state}">${label}</span>`;
 }
-function taskKanbanCard(t, mine=true) { return '<div class="task-kanban-card" draggable="true" data-task-id="'+t.id+'" ondragstart="dragTask(event)" onclick="editRow(\'personal_tasks\',\''+t.id+'\')"><div class="task-kanban-top"><strong>'+escapeHtml(t.title)+'</strong>'+priorityBadge(t.priority)+'</div><div class="task-kanban-meta">'+taskDueMeta(t)+( !mine && currentProfile?.is_admin ? ' · '+escapeHtml(nameOf(t.user_id)) : '')+'</div><div class="task-kanban-actions" onclick="event.stopPropagation()">'+taskActionButtons(t, 'deleteMyTask(\''+t.id+'\')')+'</div></div>'; }
+function taskKanbanCard(t, mine=true) {
+  const deleteFn = mine ? `deleteMyTask('${t.id}')` : `deleteTeamTask('${t.id}')`;
+  return '<div class="task-kanban-card" draggable="true" data-task-id="'+t.id+'" ondragstart="dragTask(event)" onclick="editRow(\'personal_tasks\',\''+t.id+'\')"><div class="task-kanban-top"><strong>'+escapeHtml(t.title)+'</strong>'+priorityBadge(t.priority)+'</div><div class="task-kanban-meta">'+taskDueMeta(t)+( !mine && currentProfile?.is_admin ? ' · '+escapeHtml(nameOf(t.user_id)) : '')+'</div><div class="task-kanban-actions" onclick="event.stopPropagation()">'+taskActionButtons(t, deleteFn)+'</div></div>';
+}
 function taskBoardColumn(status,title,rows,mine=true){ return '<div class="task-board-column" data-status="'+status+'" ondragover="event.preventDefault()" ondrop="dropTask(event,\''+status+'\')"><div class="task-board-head"><h3>'+title+'</h3><span>'+toFaDigits(rows.length)+'</span></div><div class="task-board-list">'+(rows.map(t=>taskKanbanCard(t,mine)).join('')||'<div class="empty">کاری نیست</div>')+'</div></div>'; }
 function renderTaskBoard(rows,mine=true){const g={new:[],progress:[],done:[]};(rows||[]).forEach(t=>(g[t.status]||g.new).push(t));return '<div class="task-board">'+taskBoardColumn('new','در انتظار',g.new,mine)+taskBoardColumn('progress','در حال انجام',g.progress,mine)+taskBoardColumn('done','تکمیل‌شده',g.done,mine)+'</div>';}
 function dragTask(e){e.dataTransfer.setData('text/task-id',e.currentTarget.dataset.taskId);}
-async function dropTask(e,status){e.preventDefault();const id=e.dataTransfer.getData('text/task-id');if(!id)return;await sb.from('personal_tasks').update({status}).eq('id',id);await loadMyTasks();if(currentProfile?.is_admin)await loadTeamTasks();}
+async function dropTask(e,status){
+  e.preventDefault();
+  const id=e.dataTransfer.getData('text/task-id');
+  if(!id)return;
+  const { error } = await sb.from('personal_tasks').update({status}).eq('id',id);
+  if(error){ showToast('تغییر وضعیت انجام نشد.'); return; }
+  apiPost('/api/task-calendar', { task_id:id, action:'sync' }).catch(()=>{});
+  if(currentProfile?.is_admin) await loadTeamTasks();
+  else await loadMyTasks();
+}
 function renderTasksSection() {
   const el = document.getElementById('section-tasks');
   const teamBlock = currentProfile.is_admin ? `
@@ -1976,13 +1968,10 @@ checkSession();
 
 const _attendanceQrParam = new URLSearchParams(location.search).get('attendance_qr');
 if (_attendanceQrParam) {
+  sessionStorage.setItem('dast_pending_attendance_qr', _attendanceQrParam);
   window.history.replaceState({}, '', location.pathname);
-  setTimeout(() => {
-    if (currentUser) consumeAttendanceQR(_attendanceQrParam);
-    else showToast('ابتدا وارد CRM شوید تا ورود یا خروج ثبت شود.');
-  }, 900);
+  setTimeout(() => window.tryPendingAttendanceQR?.(), 900);
 }
-
 const _calParam = new URLSearchParams(location.search).get('calendar');
 if (_calParam) {
   window.history.replaceState({}, '', location.pathname);
