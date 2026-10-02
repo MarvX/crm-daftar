@@ -1298,7 +1298,7 @@ function holidayFor(jy,jm,jd) {
   return HOLIDAYS_1405[`${jy}/${String(jm).padStart(2,'0')}/${String(jd).padStart(2,'0')}`] || null;
 }
 
-const JALALI_MONTHS = ['فروردین','اردیبهشت','خرداد','تیر','مرداد','شهریور','مهر','آبان','آذر','دی','بهمن','اسفند'];
+
 function fillJalaliSelectors() {
   const now = new Date(); const cur = JalaaliLib.toJalaali(now.getFullYear(), now.getMonth() + 1, now.getDate()); const baseJY = cur.jy;
   const yearSel = document.getElementById('export-jy'), monthSel = document.getElementById('export-jm');
