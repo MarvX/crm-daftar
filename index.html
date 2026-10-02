@@ -8,7 +8,7 @@
 <meta name="theme-color" content="#342D73">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="دفتر دَست">
+<meta name="apple-mobile-web-app-title" content="دَست استودیو">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -430,6 +430,197 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:rgba(91,81,177
 @media(max-width:1050px){.profile-settings-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.employee-directory-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:800px){.profile-layout{grid-template-columns:1fr}.profile-form-grid{grid-template-columns:1fr}}
 @media(max-width:600px){.profile-settings-grid,.employee-directory-grid{grid-template-columns:1fr}.profile-hero{align-items:flex-start}.header-user-menu{max-width:160px}}
+/* ===== Studio Shell v2 — RTL sidebar + clean workspace ===== */
+:root{
+  --sidebar-w:274px;
+  --page-gutter:28px;
+  --surface-2:#fafafe;
+  --shadow-xs:0 1px 2px rgba(25,27,45,.04);
+  --shadow-sm:0 8px 28px rgba(25,27,45,.055);
+  --shadow-lg:0 18px 55px rgba(25,27,45,.10);
+}
+body{background:
+  radial-gradient(900px 520px at 88% -10%,rgba(91,81,177,.055),transparent 58%),
+  var(--bg);
+}
+body.dark{background:
+  radial-gradient(900px 520px at 88% -10%,rgba(129,120,220,.09),transparent 60%),
+  var(--bg);
+}
+.app-header{
+  position:sticky!important;
+  top:0!important;
+  z-index:38;
+  margin-inline-start:var(--sidebar-w);
+  width:calc(100% - var(--sidebar-w));
+  padding:17px var(--page-gutter) 15px!important;
+  background:rgba(248,248,252,.88)!important;
+  border-bottom:1px solid rgba(226,226,236,.86)!important;
+  box-shadow:0 8px 28px rgba(25,27,45,.045)!important;
+}
+body.dark .app-header{background:rgba(17,18,26,.89)!important;border-bottom-color:rgba(48,49,63,.92)!important}
+.header-main{width:100%!important;display:grid!important;grid-template-columns:auto minmax(280px,1fr) auto!important;gap:24px!important;align-items:center!important}
+.header-context{display:flex;align-items:center;min-width:185px}
+.header-context-title{display:grid;gap:2px}
+.header-context-title h1{margin:0;font-size:20px;line-height:1.25;letter-spacing:-.2px}
+.header-context-title span{font-size:10px;color:var(--muted);font-weight:600}
+.header-context-title span:empty{display:none}
+.header-search{max-width:520px!important;min-height:48px!important;justify-self:center;border-radius:16px!important;background:var(--surface)!important;box-shadow:var(--shadow-xs)!important}
+.header-search-text{font-size:12px!important}
+.header-search kbd{background:var(--bg)!important}
+.header-actions{display:flex!important;align-items:center!important;justify-content:flex-end!important;gap:8px!important;min-width:0}
+.header-user-menu{
+  order:0;
+  min-height:46px!important;
+  max-width:230px!important;
+  padding:5px 8px 5px 10px!important;
+  border-radius:15px!important;
+  background:var(--surface)!important;
+  border:1px solid var(--border)!important;
+  box-shadow:var(--shadow-xs);
+}
+.header-user-arrow{font-size:19px;color:var(--muted);line-height:1;margin-inline-start:2px}
+.header-avatar{width:34px!important;height:34px!important;border-radius:11px!important}
+.header-user-copy strong{font-size:11px!important}
+.header-user-copy small{font-size:9px!important;color:var(--muted)}
+.header-logout-icon{font-size:17px;display:grid;place-items:center;width:40px;min-width:40px;padding:0!important}
+.header-menu-toggle{display:none!important}
+#top-nav{
+  position:fixed!important;
+  top:0!important;
+  right:0!important;
+  left:auto!important;
+  bottom:0!important;
+  z-index:60;
+  width:var(--sidebar-w)!important;
+  height:100dvh!important;
+  min-height:100vh;
+  margin:0!important;
+  padding:20px 14px 16px!important;
+  display:flex!important;
+  flex-direction:column!important;
+  gap:0!important;
+  overflow:hidden!important;
+  background:rgba(250,250,253,.96)!important;
+  border-left:1px solid rgba(226,226,236,.92)!important;
+  border-right:0!important;
+  border-bottom:0!important;
+  box-shadow:-12px 0 35px rgba(25,27,45,.055)!important;
+  backdrop-filter:blur(18px) saturate(150%);
+}
+body.dark #top-nav{background:rgba(19,20,29,.97)!important;border-left-color:#30313f!important;box-shadow:-12px 0 35px rgba(0,0,0,.16)!important}
+.sidebar-head{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:0 6px 22px;border-bottom:1px solid var(--border)}
+.sidebar-brand{display:flex;align-items:center;gap:10px;min-width:0}
+.sidebar-brand-mark{width:44px;height:44px;border-radius:14px;display:grid;place-items:center;background:linear-gradient(145deg,var(--navy),var(--navy-light));color:#fff;font-size:20px;font-weight:900;box-shadow:0 10px 24px rgba(52,45,115,.18)}
+.sidebar-brand strong{display:block;font-size:14px;letter-spacing:-.1px}
+.sidebar-brand span{display:block;font-size:9px;color:var(--muted);margin-top:2px}
+.sidebar-mobile-close{display:none;width:34px;height:34px;border:1px solid var(--border);border-radius:10px;background:var(--surface);color:var(--text);font-size:19px;cursor:pointer}
+.sidebar-scroll{flex:1;overflow:auto;padding:16px 2px 12px;scrollbar-width:thin}
+.sidebar-group{margin-bottom:8px}
+.sidebar-group-toggle{
+  width:100%;display:flex;align-items:center;justify-content:space-between;
+  padding:8px 10px;border:0;background:transparent;color:var(--muted);
+  font:800 9px var(--font-ui);letter-spacing:.25px;cursor:pointer
+}
+.sidebar-group-chevron{font-size:12px;transition:transform .16s ease}
+.sidebar-group.is-open .sidebar-group-chevron{transform:rotate(180deg)}
+.sidebar-group-items{display:grid;gap:3px;max-height:0;overflow:hidden;transition:max-height .2s ease}
+.sidebar-group.is-open .sidebar-group-items{max-height:360px}
+.sidebar-nav-item{
+  width:100%;min-height:42px;padding:7px 10px;border:1px solid transparent!important;border-radius:12px;
+  display:flex;align-items:center;gap:10px;background:transparent!important;color:var(--muted)!important;
+  font:700 11px var(--font-ui);cursor:pointer;text-align:right;position:relative
+}
+.sidebar-nav-item:hover{background:rgba(91,81,177,.055)!important;color:var(--text)!important;transform:none!important}
+.sidebar-nav-item.active{
+  background:linear-gradient(90deg,rgba(91,81,177,.12),rgba(91,81,177,.055))!important;
+  color:var(--navy-light)!important;border-color:rgba(91,81,177,.13)!important;
+}
+body.dark .sidebar-nav-item.active{background:linear-gradient(90deg,rgba(129,120,220,.17),rgba(129,120,220,.07))!important;color:#cecaff!important;border-color:rgba(129,120,220,.2)!important}
+.sidebar-nav-icon{width:31px;height:31px;display:grid;place-items:center;border-radius:9px;background:rgba(91,81,177,.06);font-size:14px;color:currentColor;flex:none}
+.sidebar-nav-item.active .sidebar-nav-icon{background:rgba(91,81,177,.12)}
+.sidebar-nav-label{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sidebar-nav-active-dot{width:5px;height:5px;border-radius:50%;background:currentColor;flex:none}
+.sidebar-foot{padding:12px 6px 2px;border-top:1px solid var(--border)}
+.sidebar-foot-note{display:flex;align-items:center;gap:7px;color:var(--muted);font-size:9px}
+.sidebar-foot-dot{width:6px;height:6px;border-radius:50%;background:var(--success);box-shadow:0 0 0 4px rgba(31,138,90,.09)}
+#sidebar-backdrop{display:none!important}
+main{
+  width:calc(100% - var(--sidebar-w))!important;
+  max-width:none!important;
+  margin:0!important;
+  padding:28px var(--page-gutter) 48px!important;
+}
+.content-shell{width:min(1240px,100%);margin:0 auto}
+main>div:not(.hidden){animation:sectionIn .2s ease-out both}
+.card,.stat{box-shadow:var(--shadow-sm)!important}
+.card:hover,.stat:hover{transform:none!important;box-shadow:var(--shadow-sm)!important}
+.row-top{margin-bottom:16px}
+.grid-stats{gap:14px}
+.stat{padding:18px;text-align:right}
+.stat .num{font-size:27px}
+.stat .label{font-size:10px;margin-top:5px}
+.pipeline{gap:12px}
+.stage-col{box-shadow:none!important}
+.app-footer{
+  width:calc(100% - var(--sidebar-w))!important;
+  max-width:none!important;
+  margin:0!important;
+  padding:16px var(--page-gutter) 28px!important;
+}
+.app-footer>*{width:min(1240px,100%);margin-inline:auto}
+.footer-brand{justify-content:flex-start}
+body.sidebar-open{overflow:hidden}
+@media(max-width:900px){
+  :root{--sidebar-w:268px;--page-gutter:18px}
+  .app-header{margin-inline-start:0;width:100%;padding:13px var(--page-gutter) 12px!important}
+  #top-nav{transform:translateX(105%);transition:transform .22s cubic-bezier(.2,.8,.2,1);box-shadow:-18px 0 45px rgba(0,0,0,.14)!important}
+  body.sidebar-open #top-nav{transform:translateX(0)}
+  #sidebar-backdrop{position:fixed;inset:0;z-index:55;display:block!important;background:rgba(10,11,18,.34);backdrop-filter:blur(2px);opacity:1;transition:opacity .2s ease}
+  #sidebar-backdrop.hidden{display:none!important;opacity:0}
+  .sidebar-mobile-close{display:grid;place-items:center}
+  .header-main{grid-template-columns:auto minmax(0,1fr) auto!important;gap:10px!important}
+  .header-context{min-width:0}
+  .header-context-title h1{font-size:17px}
+  .header-search{max-width:none!important;min-height:44px!important}
+  .header-search kbd{display:none}
+  .header-actions{gap:5px!important}
+  .header-menu-toggle{display:grid!important}
+  .header-logout-icon{display:none}
+  .header-user-menu{max-width:185px!important}
+  main{width:100%!important;padding:20px var(--page-gutter) 38px!important}
+  .app-footer{width:100%!important}
+}
+@media(max-width:700px){
+  :root{--page-gutter:12px}
+  .header-main{grid-template-columns:auto minmax(0,1fr) auto!important}
+  .header-context-title span{font-size:9px}
+  .header-context-title h1{font-size:15px}
+  .header-search{min-height:40px!important;padding:0 10px!important}
+  .header-search-icon{font-size:16px}
+  .header-search-text{font-size:10px!important}
+  .header-actions .header-status-btn{display:none}
+  .header-user-menu{max-width:158px!important;min-height:40px!important;padding:4px 6px!important}
+  .header-user-copy strong{max-width:78px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .header-user-copy small{display:none}
+  .header-avatar{width:29px!important;height:29px!important}
+  .header-icon-btn{width:36px!important;min-width:36px!important;height:36px!important}
+  .header-context{display:none}
+  .header-main{grid-template-columns:minmax(0,1fr) auto!important}
+  .header-search{grid-column:1/-1;grid-row:2}
+  .header-actions{grid-column:1/-1;grid-row:1}
+  .header-user-menu{margin-inline-start:auto}
+  .app-header{padding:10px var(--page-gutter) 12px!important}
+}
+@media(max-width:480px){
+  .header-user-menu{max-width:145px!important}
+  .header-actions{justify-content:space-between!important}
+  .header-actions .notification-bell{margin-inline-start:auto}
+  #top-nav{width:min(var(--sidebar-w),88vw)!important}
+}
+@media(prefers-reduced-motion:reduce){
+  #top-nav,#sidebar-backdrop,.sidebar-group-items{transition:none}
+}
 </style>
 </head>
 <body>
@@ -438,7 +629,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:rgba(91,81,177
   <div class="login-shell">
     <aside class="login-brand">
       <img src="/icons/apple-touch-icon.png" alt="">
-      <h2>دفتر دَست</h2>
+      <h2>دَست استودیو</h2>
       <p>پروژه‌ها، کارفرمایان، قراردادها و تیم؛ همه در یک پنل.</p>
       <ul class="login-points">
         <li>ثبت ورود و خروج با یک کلیک یا QR دائمی</li>
@@ -466,28 +657,39 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:rgba(91,81,177
 <div id="app-root" class="hidden">
   <header class="app-header">
     <div class="header-main">
-      <div class="app-brand" aria-label="دَست استودیو">
-        <div class="brand-mark">د</div>
-        <div class="brand-copy"><h1>دَست استودیو</h1><span>سیستم مدیریت دفتر</span></div>
-      </div>
-      <button class="header-search" id="search-btn" onclick="openGlobalSearch()" aria-label="جست‌وجوی سراسری">
-        <span class="header-search-icon">⌕</span><span class="header-search-text">جست‌وجوی سریع در دفتر</span><kbd>Ctrl K</kbd>
-      </button>
       <div class="header-actions">
-        <button class="header-status-btn hidden" id="calendar-btn" onclick="connectCalendar()" aria-label="اتصال به گوگل کلندر" title="اتصال به گوگل کلندر"><span class="header-status-icon" aria-hidden="true">◫</span><span class="header-status-copy"><strong>اتصال کلندر</strong><small></small></span></button>
+        <button class="header-user-menu" onclick="switchSection('profile')" aria-label="باز کردن پروفایل">
+          <span class="header-avatar" id="header-avatar" aria-hidden="true">◌</span>
+          <span class="header-user-copy"><strong id="user-badge"></strong><small>پروفایل من</small></span>
+          <span class="header-user-arrow" aria-hidden="true">‹</span>
+        </button>
+        <button class="header-status-btn hidden" id="calendar-btn" onclick="connectCalendar()" aria-label="اتصال به گوگل کلندر" title="اتصال به گوگل کلندر">
+          <span class="header-status-icon" aria-hidden="true">◫</span><span class="header-status-copy"><strong>اتصال کلندر</strong><small></small></span>
+        </button>
         <button class="header-icon-btn hidden" id="install-btn" onclick="installApp()" aria-label="نصب اپ" title="نصب اپ">↥</button>
         <button class="header-icon-btn hidden" id="dark-btn" onclick="toggleDarkMode()" aria-label="تغییر حالت نمایش" title="تغییر حالت نمایش">☾</button>
         <button class="header-icon-btn hidden" id="notif-btn" onclick="enableNotifications()" aria-label="فعال‌سازی اعلان" title="فعال‌سازی اعلان">🔔</button>
-        <button class="header-icon-btn notification-bell" id="notification-btn" onclick="openNotificationCenter()" aria-label="اعلان‌ها" title="اعلان‌ها">🔔<span id="notif-count" class="notif-count hidden">۰</span></button>
-        <button class="header-user-menu" onclick="switchSection('profile')" aria-label="باز کردن پروفایل"><span class="header-avatar" id="header-avatar" aria-hidden="true">◌</span><span class="header-user-copy"><strong id="user-badge"></strong><small>پروفایل من</small></span></button>
-        <button class="header-logout" onclick="doLogout()">خروج</button>
+        <button class="header-icon-btn notification-bell" id="notification-btn" onclick="openNotificationCenter()" aria-label="اعلان‌ها" title="اعلان‌ها">
+          🔔<span id="notif-count" class="notif-count hidden">۰</span>
+        </button>
+        <button class="header-icon-btn header-menu-toggle" onclick="toggleSidebar()" aria-label="باز و بسته کردن منو" title="منوی اصلی">☰</button>
+        <button class="header-logout header-logout-icon" onclick="doLogout()" aria-label="خروج" title="خروج">↪</button>
+      </div>
+
+      <button class="header-search" id="search-btn" onclick="openGlobalSearch()" aria-label="جست‌وجوی سراسری">
+        <span class="header-search-icon">⌕</span><span class="header-search-text">جست‌وجوی سریع در دفتر</span><kbd>Ctrl K</kbd>
+      </button>
+
+      <div class="header-context">
+        <div class="header-context-title"><h1 id="header-page-title">داشبورد</h1><span id="header-page-date"></span></div>
       </div>
     </div>
   </header>
-  <nav id="top-nav"></nav>
-
+  <nav id="top-nav" aria-label="منوی اصلی"></nav>
+  <div id="sidebar-backdrop" class="hidden" onclick="setSidebarOpen(false)" aria-hidden="true"></div>
   <main>
-    <div id="section-attendance" class="hidden"></div>
+    <div class="content-shell">
+      <div id="section-attendance" class="hidden"></div>
     <div id="section-calendar" class="hidden"></div>
     <div id="section-tasks" class="hidden"></div>
     <div id="section-dashboard" class="hidden"></div>
@@ -502,6 +704,8 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:rgba(91,81,177
     <div id="section-erp-tasks" class="hidden"></div>
     <div id="section-costs" class="hidden"></div>
     <div id="section-tenders" class="hidden"></div>
+  </main>
+      </div>
   </main>
   <footer class="app-footer">
     <div class="footer-brand"><div class="footer-mark">د</div><div><strong>دَست استودیو</strong><span>مدیریت یکپارچه دفتر</span></div></div>
