@@ -140,6 +140,32 @@
   .task-overdue{border-inline-start:3px solid var(--danger)!important}
   .task-soon{border-inline-start:3px solid var(--warn)!important}
   .deadline-badge{font-size:10px;font-weight:800;padding:3px 7px;border-radius:999px;background:rgba(192,57,43,.1);color:var(--danger)}
+  .priority-badge{display:inline-flex;align-items:center;padding:3px 8px;border-radius:999px;font-size:10px;font-weight:800;white-space:nowrap}
+  .priority-high{background:rgba(192,57,43,.12);color:var(--danger)}
+  .priority-mid{background:rgba(184,134,11,.12);color:var(--warn)}
+  .priority-low{background:rgba(31,138,90,.12);color:var(--success)}
+  .task-due{font-size:11px;font-weight:700}
+  .task-due.overdue{color:var(--danger)}
+  .task-due.today{color:var(--warn)}
+  .task-due.upcoming{color:var(--muted)}
+  .task-due.done{color:var(--success)}
+  .task-no-date{font-size:11px;color:var(--muted)}
+  .task-summary{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+  .task-summary-chip{font-size:11px;padding:4px 8px;border-radius:999px;background:var(--bg);border:1px solid var(--border)}
+  .table-wrap{width:100%;overflow-x:auto}
+  .notification-modal{max-width:620px}
+  .notification-item{width:100%;display:flex;align-items:flex-start;gap:10px;text-align:right;border:1px solid var(--border);border-radius:10px;padding:11px;margin-bottom:7px;background:var(--surface);color:var(--text);font-family:inherit;cursor:pointer}
+  .notification-item:hover{border-color:var(--navy-light);transform:translateY(-1px)}
+  .notification-item.unread{border-inline-start:3px solid var(--navy-light);background:rgba(52,45,115,.045)}
+  .notification-icon{width:34px;height:34px;border-radius:9px;background:rgba(52,45,115,.1);display:grid;place-items:center;flex:none}
+  .notification-copy{display:flex;flex-direction:column;gap:2px;min-width:0}
+  .notification-copy>span{font-size:12px;color:var(--muted);line-height:1.7}
+  .notification-copy small{font-size:10px;color:var(--muted)}
+  .activity-row{display:flex;gap:10px;align-items:flex-start;padding:9px 0;border-bottom:1px solid var(--border)}
+  .activity-row:last-child{border-bottom:0}
+  .activity-dot{width:8px;height:8px;border-radius:50%;background:var(--navy-light);margin-top:7px;flex:none}
+  .notification-bell{position:relative;min-width:42px;padding-inline:10px!important}
+  .notification-bell .notif-count{position:absolute;top:-5px;left:-5px;min-width:19px;height:19px;padding:0 4px;border-radius:999px;background:var(--danger);color:#fff;font-size:10px;font-weight:800;display:grid;place-items:center;border:2px solid var(--navy)}
   .deadline-badge.soon{background:rgba(184,134,11,.12);color:var(--warn)}
   #global-search-input{width:100%;font-size:15px;padding:12px 14px}
   #global-search-results{max-height:52vh;overflow:auto;margin-top:10px}
@@ -189,6 +215,7 @@
       <button class="btn secondary hidden" id="install-btn" onclick="installApp()" style="color:#fff;border-color:#fff;">📲 نصب اپ</button>
       <button class="btn secondary hidden" id="dark-btn" onclick="toggleDarkMode()" style="color:#fff;border-color:#fff;">🌙 حالت تیره</button>
       <button class="btn secondary hidden" id="notif-btn" onclick="enableNotifications()" style="color:#fff;border-color:#fff;">🔔 فعال‌سازی اعلان</button>
+      <button class="btn secondary notification-bell" id="notification-btn" onclick="openNotificationCenter()" style="color:#fff;border-color:#fff;" aria-label="اعلان‌ها">🔔<span id="notif-count" class="notif-count hidden">۰</span></button>
       <button class="btn secondary" id="search-btn" onclick="openGlobalSearch()" style="color:#fff;border-color:#fff;">⌕ جستجو</button>
       <button class="btn secondary" onclick="changeMyPassword()" style="color:#fff;border-color:#fff;">🔐 تغییر رمز</button>
       <button class="btn secondary" onclick="doLogout()" style="color:#fff;border-color:#fff;">خروج</button>
