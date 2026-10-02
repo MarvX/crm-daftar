@@ -577,6 +577,7 @@ function buildNav(activeId = activeSectionId) {
     </div>
     <div class="sidebar-scroll">${groupHtml}</div>
     <div class="sidebar-foot">
+      <button type="button" class="sidebar-logout" onclick="doLogout()"><span class="sidebar-logout-icon">↪</span><span>خروج از حساب</span></button>
       <div class="sidebar-foot-note"><span class="sidebar-foot-dot"></span><span>پنل داخلی دَست استودیو</span></div>
     </div>`;
 }
