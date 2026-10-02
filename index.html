@@ -330,6 +330,36 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:rgba(91,81,177
 @media(max-width:520px){.header-actions{gap:5px}.header-icon-btn{width:36px!important;min-width:36px;height:36px;min-height:36px}.header-user-menu{min-height:36px}.header-avatar{width:28px;height:28px}.header-logout{min-height:36px;padding:0 9px}#top-nav{top:126px}.app-brand .brand-copy span{display:none}}
 @media(prefers-reduced-motion:reduce){.header-search:hover,.header-icon-btn:hover{transform:none}}
 
+/* header action cleanup */
+.header-actions{gap:8px}
+.header-status-btn{
+  min-height:40px;width:auto;max-width:190px;padding:4px 10px 4px 7px;border:1px solid var(--border);border-radius:11px;
+  background:var(--surface);color:var(--text);display:flex;align-items:center;gap:8px;cursor:pointer;font-family:var(--font-ui);
+  text-align:right;white-space:nowrap
+}
+.header-status-btn:hover{transform:translateY(-1px);border-color:rgba(91,81,177,.42);box-shadow:var(--shadow-sm)}
+.header-status-btn.is-connected{border-color:rgba(23,134,90,.25);background:rgba(23,134,90,.055)}
+.header-status-btn.needs-reconnect{border-color:rgba(198,69,55,.28);background:rgba(198,69,55,.06)}
+.header-status-icon{
+  width:29px;height:29px;border-radius:9px;display:grid;place-items:center;flex:none;
+  background:rgba(91,81,177,.10);color:var(--navy-light);font-size:14px;font-weight:900
+}
+.header-status-btn.is-connected .header-status-icon{background:rgba(23,134,90,.12);color:var(--success)}
+.header-status-btn.needs-reconnect .header-status-icon{background:rgba(198,69,55,.12);color:var(--danger)}
+.header-status-copy{display:grid;gap:0;min-width:0}
+.header-status-copy strong{font-size:10px;font-weight:800;line-height:1.5}
+.header-status-copy small{font-size:9px;color:var(--muted);max-width:120px;overflow:hidden;text-overflow:ellipsis;direction:ltr;text-align:right;line-height:1.4}
+.header-icon-btn{font-size:16px}
+@media(max-width:1000px){
+  .header-status-btn{max-width:148px}
+  .header-status-copy small{display:none}
+}
+@media(max-width:760px){
+  .header-status-btn{width:40px;max-width:40px;min-width:40px;padding:0;justify-content:center}
+  .header-status-copy{display:none}
+  .header-status-icon{width:28px}
+}
+
 </style>
 </head>
 <body>
@@ -374,11 +404,11 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:rgba(91,81,177
         <span class="header-search-icon">⌕</span><span class="header-search-text">جست‌وجوی سریع در دفتر</span><kbd>Ctrl K</kbd>
       </button>
       <div class="header-actions">
-        <button class="header-icon-btn hidden" id="calendar-btn" onclick="connectCalendar()" aria-label="اتصال به گوگل کلندر" title="اتصال به گوگل کلندر">◫</button>
+        <button class="header-status-btn hidden" id="calendar-btn" onclick="connectCalendar()" aria-label="اتصال به گوگل کلندر" title="اتصال به گوگل کلندر"><span class="header-status-icon" aria-hidden="true">◫</span><span class="header-status-copy"><strong>اتصال کلندر</strong><small></small></span></button>
         <button class="header-icon-btn hidden" id="install-btn" onclick="installApp()" aria-label="نصب اپ" title="نصب اپ">↥</button>
         <button class="header-icon-btn hidden" id="dark-btn" onclick="toggleDarkMode()" aria-label="تغییر حالت نمایش" title="تغییر حالت نمایش">☾</button>
-        <button class="header-icon-btn hidden" id="notif-btn" onclick="enableNotifications()" aria-label="فعال‌سازی اعلان" title="فعال‌سازی اعلان">♧</button>
-        <button class="header-icon-btn notification-bell" id="notification-btn" onclick="openNotificationCenter()" aria-label="اعلان‌ها" title="اعلان‌ها">♧<span id="notif-count" class="notif-count hidden">۰</span></button>
+        <button class="header-icon-btn hidden" id="notif-btn" onclick="enableNotifications()" aria-label="فعال‌سازی اعلان" title="فعال‌سازی اعلان">🔔</button>
+        <button class="header-icon-btn notification-bell" id="notification-btn" onclick="openNotificationCenter()" aria-label="اعلان‌ها" title="اعلان‌ها">🔔<span id="notif-count" class="notif-count hidden">۰</span></button>
         <button class="header-user-menu" onclick="changeMyPassword()" aria-label="مدیریت حساب"><span class="header-avatar" aria-hidden="true">◌</span><span class="header-user-copy"><strong id="user-badge"></strong><small>حساب کاربری</small></span></button>
         <button class="header-logout" onclick="doLogout()">خروج</button>
       </div>
