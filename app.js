@@ -617,7 +617,7 @@ function switchSection(id) {
   activeSectionId = id;
   updateHeaderContext(id);
   buildNav(id);
-  document.querySelectorAll('main > div').forEach(d => d.classList.add('hidden'));
+  document.querySelectorAll('main > .content-shell > div').forEach(d => d.classList.add('hidden'));
   const section = document.getElementById('section-' + id);
   if (!section) return;
   section.classList.remove('hidden');
