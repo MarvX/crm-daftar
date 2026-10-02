@@ -856,38 +856,6 @@ async function connectCalendar() {
   else alert('اتصال به گوگل ممکن نشد.');
 }
 
-function buildNav() {
-  const nav = document.getElementById('top-nav');
-  const visible = NAV_ITEMS.filter(t => !t.adminOnly || currentProfile.is_admin);
-  nav.innerHTML = visible.map((t,i) => `<button data-id="${t.id}" class="${i===0?'active':''}" onclick="switchSection('${t.id}')">${t.label}</button>`).join('');
-}
-
-function switchSection(id) {
-  document.querySelectorAll('#top-nav button').forEach(b => b.classList.toggle('active', b.dataset.id === id));
-  document.querySelectorAll('main > div').forEach(d => d.classList.add('hidden'));
-  const section = document.getElementById('section-' + id);
-  if (!section) return;
-  section.classList.remove('hidden');
-
-  const renderMap = {
-    dashboard: renderDashboard, pipeline: renderPipeline, clients: renderClients,
-    projects: renderProjects, contracts: renderContracts, team: renderTeam,
-    profile: renderProfile, employees: renderEmployees,
-    'erp-tasks': renderErpTasks, costs: renderFixedCosts, tenders: renderTenders,
-    'office-tasks': renderOfficeTasks
-  };
-
-  if (id === 'attendance') renderAttendanceSection();
-  else if (id === 'tasks') renderTasksSection();
-  else if (id === 'calendar') renderCalendar();
-  else if (renderMap[id]) {
-    section.innerHTML = renderMap[id]();
-    if (id === 'dashboard') { enhanceDashboard(); loadDashboardExtras(); }
-    if (id === 'profile') { updateProfileSettingsUI(); }
-    if (id === 'employees') { loadEmployeeDirectory(); }
-  }
-}
-
 function avatarInitial(profile) {
   const name = String(profile?.full_name || 'د').trim();
   return escapeHtml(name ? Array.from(name)[0] : 'د');
