@@ -793,19 +793,29 @@ async function renderCalendar() {
     <div id="calendar-day-details" style="margin-top:18px;"></div>
   </div>`;
 
-  const [myRes] = await Promise.all([
-    sb.from('personal_tasks').select('*').eq('user_id', currentUser.id).order('due_date', { ascending:true })
-  ]);
-  const myTasksNow = myRes.data || [];
-  personalTasks = myTasksNow;
+  // «کارها» و «تقویم» یک منبع مشترک دارند: personal_tasks
+  // کاربر عادی فقط کارهای خودش را می‌بیند؛ مدیر تمام کارهای تیم را.
+  let taskQuery = sb.from('personal_tasks').select('*').not('due_date', 'is', null).order('due_date', { ascending:true });
+  if (!(currentProfile && currentProfile.is_admin)) taskQuery = taskQuery.eq('user_id', currentUser.id);
+  const { data: taskRows, error: taskError } = await taskQuery;
+  const calendarTasks = taskRows || [];
+  personalTasks = calendarTasks.filter(t => t.user_id === currentUser.id);
 
   const items = [];
-  myTasksNow.forEach(t => {
-    if (t.due_date) items.push({date:t.due_date,title:t.title,type:'کار من',meta:t.status==='done'?'انجام‌شده':'',status:t.status});
+  calendarTasks.forEach(t => {
+    const owner = (currentProfile && currentProfile.is_admin && t.user_id !== currentUser.id) ? nameOf(t.user_id) : '';
+    items.push({
+      date: String(t.due_date).slice(0,10),
+      title: t.title,
+      type: 'ددلاین',
+      meta: owner ? 'مسئول: ' + owner : (t.status === 'done' ? 'انجام‌شده' : 'تحویل این کار'),
+      status: t.status,
+      task_id: t.id
+    });
   });
 
   if (currentProfile && currentProfile.is_admin) {
-    (erpTasks||[]).forEach(t => { if(t.due_date) items.push({date:t.due_date,title:t.title,type:'وظیفه دفتر',meta:t.responsible_member_name||'',status:t.status}); });
+    (erpTasks||[]).forEach(t => { if(t.due_date) items.push({date:String(t.due_date).slice(0,10),title:t.title,type:'وظیفه دفتر',meta:t.responsible_member_name||'',status:t.status}); });
     (interactions||[]).forEach(i => { if(i.next_follow_up_date) items.push({date:i.next_follow_up_date,title:i.related_name||'پیگیری',type:i.type||'پیگیری',meta:i.note||''}); });
     (tenders||[]).forEach(t => { if(t.event_date) items.push({date:t.event_date,title:t.title,type:t.type||'رویداد',meta:t.issuing_body||''}); });
     (contracts||[]).forEach(c => { (contractStagesMap[c.id]||[]).forEach(s => { if(s.due_date) items.push({date:s.due_date,title:(c.project_title||'قرارداد')+' — '+s.title,type:'سررسید پرداخت',meta:(s.amount||0).toLocaleString('fa-IR')+' تومان'}); }); });
@@ -819,7 +829,7 @@ async function renderCalendar() {
   const firstWeekday = (new Date(firstG.gy, firstG.gm-1, firstG.gd).getDay() + 1) % 7;
   const totalCells = Math.ceil((firstWeekday + daysInMonth) / 7) * 7;
 
-  document.getElementById('calendar-title').innerText = calendarMonthTitle(calendarJY, calendarJM);
+  document.getElementById('calendar-title').innerHTML = calendarMonthTitle(calendarJY, calendarJM) + '<div style="font-size:11px;color:var(--muted);font-weight:500;margin-top:5px;">🔴 ددلاین کارها · خاکستری: پنجشنبه و جمعه</div>';
   const grid = document.getElementById('calendar-grid');
   let html = '';
   for (let cell=0; cell<totalCells; cell++) {
