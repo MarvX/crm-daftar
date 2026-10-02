@@ -697,9 +697,14 @@ async function refreshGoogleStatus() {
   const btn = document.getElementById('calendar-btn');
   if (!googleStatus || !btn) return;
   btn.classList.remove('hidden');
-  if (googleStatus.me.needs_reconnect) btn.innerText = '⚠️ اتصال مجدد به گوگل کلندر';
-  else if (googleStatus.me.connected) btn.innerText = `متصل: ${googleStatus.me.email || 'گوگل کلندر'}`;
-  else btn.innerText = 'اتصال به گوگل کلندر';
+  const icon = googleStatus.me.needs_reconnect ? '⚠️' : googleStatus.me.connected ? '✓' : '◫';
+  const label = googleStatus.me.needs_reconnect ? 'نیاز به اتصال مجدد' : googleStatus.me.connected ? 'کلندر متصل' : 'اتصال کلندر';
+  const detail = googleStatus.me.connected ? (googleStatus.me.email || '') : '';
+  btn.innerHTML = '<span class="header-status-icon" aria-hidden="true">'+icon+'</span><span class="header-status-copy"><strong>'+label+'</strong><small>'+detail+'</small></span>';
+  btn.title = googleStatus.me.needs_reconnect ? 'اتصال مجدد گوگل کلندر' : googleStatus.me.connected ? 'گوگل کلندر متصل است' : 'اتصال گوگل کلندر';
+  btn.setAttribute('aria-label', btn.title);
+  btn.classList.toggle('is-connected', !!googleStatus.me.connected && !googleStatus.me.needs_reconnect);
+  btn.classList.toggle('needs-reconnect', !!googleStatus.me.needs_reconnect);
   if (currentProfile.is_admin && document.getElementById('teamtasks-table')) renderEmployeeCalendarBadges();
 }
 function renderEmployeeCalendarBadges() {
@@ -791,7 +796,10 @@ function toggleDarkMode() {
 function updateDarkButton() {
   const b=document.getElementById('dark-btn'); if(!b) return;
   b.classList.remove('hidden');
-  b.innerText=document.body.classList.contains('dark') ? '☀️ حالت روشن' : '🌙 حالت تیره';
+  const isDark=document.body.classList.contains('dark');
+  b.innerHTML='<span aria-hidden="true">'+(isDark?'☀':'☾')+'</span>';
+  b.title=isDark?'تغییر به حالت روشن':'تغییر به حالت تیره';
+  b.setAttribute('aria-label',b.title);
 }
 function initDarkMode(){ if(localStorage.getItem('dast-dark')==='1') document.body.classList.add('dark'); updateDarkButton(); }
 
