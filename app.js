@@ -1299,18 +1299,6 @@ function holidayFor(jy,jm,jd) {
 }
 
 
-function fillJalaliSelectors() {
-  const now = new Date(); const cur = JalaaliLib.toJalaali(now.getFullYear(), now.getMonth() + 1, now.getDate()); const baseJY = cur.jy;
-  const yearSel = document.getElementById('export-jy'), monthSel = document.getElementById('export-jm');
-  if (!yearSel) return;
-  yearSel.innerHTML = ''; for (let y=baseJY-1; y<=baseJY+1; y++) yearSel.innerHTML += `<option value="${y}" ${y===baseJY?'selected':''}>${y}</option>`;
-  monthSel.innerHTML = JALALI_MONTHS.map((m,i) => `<option value="${i+1}" ${i+1===cur.jm?'selected':''}>${m}</option>`).join('');
-}
-function exportTimesheet() {
-  const jy = document.getElementById('export-jy').value, jm = document.getElementById('export-jm').value;
-  if (!jy || !jm) { alert('سال و ماه رو انتخاب کن'); return; }
-  window.open(`/api/export-timesheet?jy=${jy}&jm=${jm}`, '_blank');
-}
 
 // ================= کارها (شخصی) =================
 function priorityBadge(priority) {
