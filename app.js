@@ -870,7 +870,7 @@ async function saveMyProfile() {
   currentProfile=data||{...currentProfile,...payload};
   const badge=document.getElementById('user-badge'); if(badge) badge.innerText=`${currentProfile.full_name||''} ${currentProfile.role_title ? '— '+currentProfile.role_title : ''}`;
   const headerAvatar=document.getElementById('header-avatar'); if(headerAvatar) headerAvatar.innerHTML=profileAvatarInner(currentProfile);
-  renderProfile();
+  switchSection('profile');
   updateProfileSettingsUI();
   showToast('پروفایل با موفقیت ذخیره شد ✅');
 }
