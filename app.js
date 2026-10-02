@@ -687,7 +687,7 @@ function switchSection(id) {
   if (id === 'attendance') renderAttendanceSection();
   else if (id === 'tasks') renderTasksSection();
   else if (id === 'calendar') renderCalendar();
-  else if (renderMap[id]) section.innerHTML = renderMap[id]();
+  else if (renderMap[id]) { section.innerHTML = renderMap[id](); if (id === 'dashboard') enhanceDashboard(); }
 }
 
 async function refreshAllErpData() {
@@ -1193,6 +1193,26 @@ function runGlobalSearch(query){
   box.innerHTML=shown.length?shown.map((r,i)=>'<div class="search-result" style="animation-delay:'+Math.min(i,8)*20+'ms" onclick="closeGlobalSearch();switchSection(\''+r.section+'\')"><div class="sr-icon">'+r.icon+'</div><div><strong>'+escapeHtml(r.title)+'</strong><div class="sr-meta">'+escapeHtml(r.type)+' · '+escapeHtml(r.meta||'')+'</div></div></div>').join(''):'<div class="empty">چیزی پیدا نشد.</div>';
 }
 window.addEventListener('keydown',(e)=>{if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='k'){e.preventDefault();openGlobalSearch();}if(e.key==='Escape')closeGlobalSearch();});
+function enhanceDashboard(){
+  const section=document.getElementById('section-dashboard'); if(!section)return;
+  if(!document.getElementById('dashboard-quick-actions')){
+    const card=document.createElement('div'); card.className='card';
+    const actions=currentProfile?.is_admin ? [['🕘','ثبت ورود / خروج','attendance'],['✓','کار جدید','tasks'],['👤','کارفرمای جدید','clients'],['🏗️','پروژه جدید','projects']] : [['🕘','ثبت ورود / خروج','attendance'],['✓','کار جدید','tasks'],['📅','تقویم','calendar']];
+    card.innerHTML='<div class="row-top"><h2>⚡ دسترسی سریع</h2><span style="font-size:11px;color:var(--muted)">کارهای پرتکرار دفتر</span></div><div id="dashboard-quick-actions" class="quick-actions"></div>';
+    section.insertBefore(card,section.firstElementChild);
+    const grid=card.querySelector('#dashboard-quick-actions');
+    actions.forEach(a=>{const b=document.createElement('button');b.className='quick-action';b.innerHTML='<span class="qa-icon">'+a[0]+'</span><span><strong>'+a[1]+'</strong><div class="sr-meta">باز کردن بخش</div></span>';b.onclick=()=>switchSection(a[2]);grid.appendChild(b);});
+  }
+  if(!document.getElementById('dashboard-deadlines')){
+    const taskList=currentProfile?.is_admin?(erpTasks||[]):(personalTasks||[]);
+    const todayStr=new Date().toISOString().slice(0,10);
+    const due=taskList.filter(t=>t.due_date&&t.status!=='done').sort((a,b)=>String(a.due_date).localeCompare(String(b.due_date))).slice(0,6);
+    const overdue=due.filter(t=>String(t.due_date).slice(0,10)<todayStr).length;
+    const card=document.createElement('div');card.className='card';card.id='dashboard-deadlines';
+    card.innerHTML='<div class="row-top"><h2>📌 ددلاین‌های نزدیک</h2><span class="'+(overdue?'deadline-badge':'')+'">'+(overdue?toFaDigits(overdue)+' عقب‌افتاده':'همه به‌روز')+'</span></div>'+ (due.length?due.map(t=>{const late=String(t.due_date).slice(0,10)<todayStr;return '<div class="lead-card '+(late?'task-overdue':'task-soon')+'"><div class="row-top" style="margin:0"><strong>'+escapeHtml(t.title)+'</strong><span class="deadline-badge '+(late?'':'soon')+'">'+(late?'عقب‌افتاده':'ددلاین '+fmtDate(t.due_date))+'</span></div>'+(t.responsible_member_name?'<div class="meta">'+escapeHtml(t.responsible_member_name)+'</div>':'')+'</div>';}).join(''):'<div class="empty">ددلاین فعالی نداری 🎉</div>');
+    const cards=section.querySelectorAll('.card'); if(cards.length>0) cards[0].after(card); else section.appendChild(card);
+  }
+}
 // ================= داشبورد =================
 function renderDashboard() {
   const activeLeads = leads.filter(l => l.stage !== 'برنده' && l.stage !== 'بازنده').length;
