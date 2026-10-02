@@ -330,6 +330,38 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:rgba(91,81,177
 @media(max-width:520px){.header-actions{gap:5px}.header-icon-btn{width:36px!important;min-width:36px;height:36px;min-height:36px}.header-user-menu{min-height:36px}.header-avatar{width:28px;height:28px}.header-logout{min-height:36px;padding:0 9px}#top-nav{top:126px}.app-brand .brand-copy span{display:none}}
 @media(prefers-reduced-motion:reduce){.header-search:hover,.header-icon-btn:hover{transform:none}}
 
+/* ===== حضور و غیاب روزبه‌روز ===== */
+.attendance-day-list{display:grid;gap:8px}
+.attendance-day{border:1px solid var(--border);border-radius:13px;background:var(--surface);overflow:hidden}
+.attendance-day summary{list-style:none;cursor:pointer;padding:12px 14px;display:flex;align-items:center;justify-content:space-between;gap:12px}
+.attendance-day summary::-webkit-details-marker{display:none}
+.attendance-day summary::after{content:'⌄';font-size:14px;color:var(--muted);transition:transform .16s ease}
+.attendance-day[open] summary::after{transform:rotate(180deg)}
+.attendance-day:hover{border-color:rgba(91,81,177,.28)}
+.attendance-day-title{display:flex;align-items:center;gap:9px;min-width:0}
+.attendance-day-title strong{font-size:12px;white-space:nowrap}
+.attendance-day-title span{font-size:10px;color:var(--muted);background:var(--bg);border:1px solid var(--border);padding:3px 7px;border-radius:999px;white-space:nowrap}
+.attendance-day-total{font-size:10px;color:var(--muted);text-align:left;white-space:nowrap}
+.attendance-table-wrap{overflow-x:auto;border-top:1px solid var(--border)}
+.attendance-table-wrap table{margin:0}
+.attendance-table-wrap th,.attendance-table-wrap td{padding:9px 10px}
+.dashboard-attendance-action{border-color:rgba(91,81,177,.25)!important}
+.dashboard-attendance-action.dashboard-attendance-active{background:rgba(31,138,90,.08);border-color:rgba(31,138,90,.28)!important}
+.dashboard-attendance-action.dashboard-attendance-active .qa-icon{background:rgba(31,138,90,.13);color:var(--success)}
+#attendance-btn.is-active{background:var(--success)}
+.qr-static-badge{padding:5px 9px;border-radius:999px;background:rgba(31,138,90,.10);color:var(--success);font-size:10px;font-weight:800;white-space:nowrap}
+.qr-print-wrap{display:flex;justify-content:center;align-items:center;padding:18px;background:#fff;border:1px solid var(--border);border-radius:16px;margin:14px auto;width:min(300px,100%)}
+@media(max-width:700px){
+  .attendance-day summary{align-items:flex-start}
+  .attendance-day-total{display:none}
+  .attendance-day-title{flex-wrap:wrap}
+}
+@media print{
+  body *{visibility:hidden!important}
+  .qr-print-area,.qr-print-area *{visibility:visible!important}
+  .qr-print-area{position:absolute;inset:0;display:grid;place-items:center}
+}
+
 /* header action cleanup */
 .header-actions{gap:8px}
 .header-status-btn{
@@ -371,7 +403,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:rgba(91,81,177
       <h2>دفتر دَست</h2>
       <p>پروژه‌ها، کارفرمایان، قراردادها و تیم؛ همه در یک پنل.</p>
       <ul class="login-points">
-        <li>ثبت ورود و خروج با یک کلیک یا QR</li>
+        <li>ثبت ورود و خروج با یک کلیک یا QR دائمی</li>
         <li>کارها و ددلاین‌ها روی تقویم شمسی</li>
         <li>پیگیری سرنخ تا قرارداد و وصول مطالبات</li>
       </ul>
