@@ -1118,6 +1118,11 @@ function taskDueMeta(t) {
   const label = state === 'overdue' ? 'عقب‌افتاده' : state === 'today' ? 'امروز' : fmtDate(t.due_date);
   return `<span class="task-due ${state}">${label}</span>`;
 }
+function taskKanbanCard(t, mine=true) { return '<div class="task-kanban-card" draggable="true" data-task-id="'+t.id+'" ondragstart="dragTask(event)" onclick="editRow(\'personal_tasks\',\''+t.id+'\')"><div class="task-kanban-top"><strong>'+escapeHtml(t.title)+'</strong>'+priorityBadge(t.priority)+'</div><div class="task-kanban-meta">'+taskDueMeta(t)+( !mine && currentProfile?.is_admin ? ' · '+escapeHtml(nameOf(t.user_id)) : '')+'</div><div class="task-kanban-actions" onclick="event.stopPropagation()">'+taskActionButtons(t, 'deleteMyTask(\''+t.id+'\')')+'</div></div>'; }
+function taskBoardColumn(status,title,rows,mine=true){ return '<div class="task-board-column" data-status="'+status+'" ondragover="event.preventDefault()" ondrop="dropTask(event,\''+status+'\')"><div class="task-board-head"><h3>'+title+'</h3><span>'+toFaDigits(rows.length)+'</span></div><div class="task-board-list">'+(rows.map(t=>taskKanbanCard(t,mine)).join('')||'<div class="empty">کاری نیست</div>')+'</div></div>'; }
+function renderTaskBoard(rows,mine=true){const g={new:[],progress:[],done:[]};(rows||[]).forEach(t=>(g[t.status]||g.new).push(t));return '<div class="task-board">'+taskBoardColumn('new','در انتظار',g.new,mine)+taskBoardColumn('progress','در حال انجام',g.progress,mine)+taskBoardColumn('done','تکمیل‌شده',g.done,mine)+'</div>';}
+function dragTask(e){e.dataTransfer.setData('text/task-id',e.currentTarget.dataset.taskId);}
+async function dropTask(e,status){e.preventDefault();const id=e.dataTransfer.getData('text/task-id');if(!id)return;await sb.from('personal_tasks').update({status}).eq('id',id);await loadMyTasks();if(currentProfile?.is_admin)await loadTeamTasks();}
 function renderTasksSection() {
   const el = document.getElementById('section-tasks');
   const teamBlock = currentProfile.is_admin ? `
@@ -1137,7 +1142,8 @@ function renderTasksSection() {
         <select id="team-task-priority-filter" onchange="loadTeamTasks()"><option value="">— همه اولویت‌ها —</option>${TASK_PRIORITIES.map(p=>`<option>${p}</option>`).join('')}</select>
       </div>
       <div id="team-task-summary" style="margin-bottom:10px;font-size:13px;color:var(--muted);"></div>
-      <div class="table-wrap"><table><thead><tr><th>کارمند</th><th>عنوان</th><th>اولویت</th><th>ددلاین</th><th>وضعیت</th><th></th></tr></thead><tbody id="teamtasks-table"></tbody></table></div>
+      <div id="team-task-board-wrap"></div>
+      <details style="margin-top:12px;"><summary style="cursor:pointer;color:var(--muted);font-size:12px;">نمایش جدول کامل</summary><div class="table-wrap"><table><thead><tr><th>کارمند</th><th>عنوان</th><th>اولویت</th><th>ددلاین</th><th>وضعیت</th><th></th></tr></thead><tbody id="teamtasks-table"></tbody></table></div></details>
     </div>` : '';
   el.innerHTML = `
     <div class="card">
@@ -1154,7 +1160,8 @@ function renderTasksSection() {
         <button class="btn secondary small" onclick="loadMyTasks()">↻ تازه‌سازی</button>
       </div>
       <div id="mytask-summary" class="task-summary"></div>
-      <div class="table-wrap"><table><thead><tr><th>عنوان</th><th>اولویت</th><th>ددلاین</th><th>وضعیت</th><th></th></tr></thead><tbody id="mytasks-table"></tbody></table></div>
+      <div id="mytask-board-wrap"></div>
+      <details style="margin-top:12px;"><summary style="cursor:pointer;color:var(--muted);font-size:12px;">نمایش جدول کامل</summary><div class="table-wrap"><table><thead><tr><th>عنوان</th><th>اولویت</th><th>ددلاین</th><th>وضعیت</th><th></th></tr></thead><tbody id="mytasks-table"></tbody></table></div></details>
     </div>
     ${teamBlock}
   `;
@@ -1211,6 +1218,7 @@ async function loadMyTasks() {
   (data||[]).forEach(t => counts[t.status] = (counts[t.status]||0)+1);
   const summary = document.getElementById('mytask-summary');
   if (summary) summary.innerHTML = `<span class="task-summary-chip">${toFaDigits(data?.length||0)} کار</span> <span class="task-summary-chip">در انتظار: ${toFaDigits(counts.new||0)}</span> <span class="task-summary-chip">در حال انجام: ${toFaDigits(counts.progress||0)}</span> <span class="task-summary-chip">تکمیل‌شده: ${toFaDigits(counts.done||0)}</span>`;
+  const board=document.getElementById("mytask-board-wrap"); if(board) board.innerHTML=renderTaskBoard(data||[],true);
   tbody.innerHTML = (data||[]).map(t => `<tr>
     <td><strong>${escapeHtml(t.title)}</strong></td>
     <td>${priorityBadge(t.priority)}</td>
@@ -1254,6 +1262,7 @@ async function loadTeamTasks() {
   const { data } = await q;
   const rows = data || [];
   cacheRows('personal_tasks', rows);
+  const board=document.getElementById("team-task-board-wrap"); if(board) board.innerHTML=renderTaskBoard(rows,false);
   const tbody = document.getElementById('teamtasks-table'); if (!tbody) return;
   tbody.innerHTML = rows.map(t => `<tr>
     <td>${escapeHtml(nameOf(t.user_id))}</td><td><strong>${escapeHtml(t.title)}</strong></td><td>${priorityBadge(t.priority)}</td><td>${taskDueMeta(t)}</td><td>${statusLabel(t.status)}</td>
@@ -1384,6 +1393,10 @@ function renderDashboard() {
       </div>
     </div>
     <div class="card">
+      <div class="row-top"><div><h2>👥 وضعیت کارهای تیم</h2><div style="font-size:12px;color:var(--muted)">الان هر کار دست چه کسی است و در چه مرحله‌ای قرار دارد.</div></div><button class="btn small secondary" onclick="switchSection('tasks')">مدیریت کارها</button></div>
+      <div id="dashboard-team-tasks"><div class="empty">در حال بارگذاری...</div></div>
+    </div>
+    <div class="card">
       <div class="row-top"><h2>🧾 آخرین فعالیت‌ها</h2><span style="font-size:11px;color:var(--muted)">ثبت خودکار تغییرات مهم</span></div>
       <div id="dashboard-activity"><div class="empty">در حال بارگذاری...</div></div>
     </div>
@@ -1400,8 +1413,10 @@ function renderDashboard() {
 async function loadDashboardExtras() {
   if (!currentProfile?.is_admin) return;
   const box=document.getElementById('dashboard-activity');
-  if (!box) return;
-  const {data}=await sb.from('activity_logs').select('*').order('created_at',{ascending:false}).limit(8);
+  const teamBox=document.getElementById('dashboard-team-tasks');
+  if (!box && !teamBox) return;
+  const [{data},{data:teamRows}] = await Promise.all([sb.from('activity_logs').select('*').order('created_at',{ascending:false}).limit(8),sb.from('personal_tasks').select('*').neq('status','done').order('due_date',{ascending:true})]);
+  if(teamBox){const grouped={};(teamRows||[]).forEach(t=>{const k=t.user_id||'unknown';if(!grouped[k])grouped[k]=[];grouped[k].push(t);});const people=Object.keys(grouped);teamBox.innerHTML=people.length?people.map(uid=>'<div class="team-work-row"><div class="team-work-person"><strong>'+escapeHtml(nameOf(uid))+'</strong><span>'+toFaDigits(grouped[uid].length)+' کار باز</span></div><div class="team-work-tasks">'+grouped[uid].slice(0,4).map(t=>'<span class="team-task-chip">'+escapeHtml(t.title)+' · '+statusLabel(t.status)+' · '+taskDueMeta(t)+'</span>').join('')+(grouped[uid].length>4?'<span class="team-task-chip">+ '+(grouped[uid].length-4)+' کار دیگر</span>':'')+'</div></div>').join(''):'<div class="empty">فعلاً کار بازی برای تیم ثبت نشده 🎉</div>';}
   box.innerHTML=(data||[]).length ? (data||[]).map(a=>`
     <div class="activity-row">
       <span class="activity-dot"></span>
