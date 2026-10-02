@@ -583,9 +583,19 @@ function buildNav(activeId = activeSectionId) {
 }
 
 function toggleNavGroup(groupId) {
-  if (openNavGroups.has(groupId)) openNavGroups.delete(groupId);
-  else openNavGroups.add(groupId);
-  buildNav(activeSectionId);
+  const nav = document.getElementById('top-nav');
+  const group = nav?.querySelector('[data-nav-group="' + groupId + '"]');
+  const nextOpen = !openNavGroups.has(groupId);
+  if (nextOpen) openNavGroups.add(groupId);
+  else openNavGroups.delete(groupId);
+
+  if (group) {
+    group.classList.toggle('is-open', nextOpen);
+    const toggle = group.querySelector('.sidebar-group-toggle');
+    if (toggle) toggle.setAttribute('aria-expanded', String(nextOpen));
+  } else {
+    buildNav(activeSectionId);
+  }
 }
 
 function setSidebarOpen(open) {
