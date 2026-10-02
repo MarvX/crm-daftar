@@ -501,10 +501,10 @@ async function resetUserPassword(userId, userName) {
 }
 
 const NAV_ITEMS = [
+  { id: 'dashboard', label: 'داشبورد' },
   { id: 'attendance', label: 'ورود و خروج' },
   { id: 'tasks', label: 'کارها' },
   { id: 'calendar', label: 'تقویم' },
-  { id: 'dashboard', label: 'داشبورد' },
   { id: 'pipeline', label: 'پایپ‌لاین سرنخ‌ها', adminOnly: true },
   { id: 'clients', label: 'کارفرمایان', adminOnly: true },
   { id: 'projects', label: 'پروژه‌ها', adminOnly: true },
@@ -523,7 +523,7 @@ async function loadProfileAndShowApp() {
 
   buildNav();
   initDarkMode();
-  switchSection('attendance');
+  switchSection('dashboard');
   loadAttendanceStatus();
   loadMyTasks();
   refreshGoogleStatus();
@@ -955,87 +955,299 @@ function calendarGoToday() {
 
 
 // ================= حضور و غیاب =================
+const ATTENDANCE_TEHRAN_OFFSET_MS = 3.5 * 3600 * 1000;
+const ATTENDANCE_WEEKDAYS = ['یکشنبه','دوشنبه','سه‌شنبه','چهارشنبه','پنجشنبه','جمعه','شنبه'];
+
+function attendanceTehranDateKey(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  const t = new Date(d.getTime() + ATTENDANCE_TEHRAN_OFFSET_MS);
+  return `${t.getUTCFullYear()}-${String(t.getUTCMonth()+1).padStart(2,'0')}-${String(t.getUTCDate()).padStart(2,'0')}`;
+}
+
+function attendanceTime(iso) {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '—';
+  const t = new Date(d.getTime() + ATTENDANCE_TEHRAN_OFFSET_MS);
+  return toFaDigits(`${String(t.getUTCHours()).padStart(2,'0')}:${String(t.getUTCMinutes()).padStart(2,'0')}`);
+}
+
+function attendanceDayTitle(dateKey) {
+  const m = String(dateKey).match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!m) return dateKey;
+  const jy = JalaaliLib.toJalaali(+m[1], +m[2], +m[3]);
+  const weekday = new Date(Date.UTC(+m[1], +m[2]-1, +m[3])).getUTCDay();
+  return `${ATTENDANCE_WEEKDAYS[weekday]} · ${fmtDate(dateKey)}`;
+}
+
+function attendanceMonthRange(jy, jm) {
+  const nextJy = jm === 12 ? jy + 1 : jy;
+  const nextJm = jm === 12 ? 1 : jm + 1;
+  const first = JalaaliLib.toGregorian(jy, jm, 1);
+  const next = JalaaliLib.toGregorian(nextJy, nextJm, 1);
+  const start = new Date(Date.UTC(first.gy, first.gm-1, first.gd) - ATTENDANCE_TEHRAN_OFFSET_MS);
+  const end = new Date(Date.UTC(next.gy, next.gm-1, next.gd) - ATTENDANCE_TEHRAN_OFFSET_MS);
+  return { start: start.toISOString(), end: end.toISOString() };
+}
+
+function currentAttendanceMonth() {
+  const now = new Date();
+  return JalaaliLib.toJalaali(now.getFullYear(), now.getMonth()+1, now.getDate());
+}
+
+function fillAttendanceMonthSelectors(...ids) {
+  const cur = currentAttendanceMonth();
+  ids.forEach(([yearId, monthId]) => {
+    const ys = document.getElementById(yearId), ms = document.getElementById(monthId);
+    if (!ys || !ms) return;
+    ys.innerHTML = '';
+    for (let y=cur.jy-1; y<=cur.jy+1; y++) {
+      ys.innerHTML += `<option value="${y}" ${y===cur.jy?'selected':''}>${toFaDigits(y)}</option>`;
+    }
+    ms.innerHTML = JALALI_MONTHS.map((m,i) => `<option value="${i+1}" ${i+1===cur.jm?'selected':''}>${m}</option>`).join('');
+  });
+}
+
+function attendanceSelection(yearId, monthId) {
+  const jy = parseInt(document.getElementById(yearId)?.value);
+  const jm = parseInt(document.getElementById(monthId)?.value);
+  return jy && jm ? { jy, jm } : null;
+}
+
+function groupAttendanceByDay(rows) {
+  const grouped = {};
+  (rows || []).forEach(a => {
+    const key = attendanceTehranDateKey(a.check_in);
+    if (!key) return;
+    (grouped[key] ||= []).push(a);
+  });
+  Object.values(grouped).forEach(items => items.sort((a,b) => new Date(a.check_in) - new Date(b.check_in)));
+  return Object.entries(grouped).sort(([a],[b]) => b.localeCompare(a));
+}
+
+function attendanceDayMinutes(rows) {
+  return (rows || []).reduce((sum,a) => {
+    if (!a.check_out) return sum;
+    return sum + Math.max(0, Math.round((new Date(a.check_out) - new Date(a.check_in)) / 60000));
+  }, 0);
+}
+
+function renderAttendanceDays(rows, isAdmin) {
+  const groups = groupAttendanceByDay(rows);
+  if (!groups.length) return '<div class="empty">برای این ماه هنوز رکوردی ثبت نشده.</div>';
+  const todayKey = attendanceTehranDateKey(new Date().toISOString());
+  return groups.map(([dateKey, items]) => {
+    const minutes = attendanceDayMinutes(items);
+    const isToday = dateKey === todayKey;
+    return `<details class="attendance-day" ${isToday ? 'open' : ''}>
+      <summary>
+        <div class="attendance-day-title"><strong>${escapeHtml(attendanceDayTitle(dateKey))}</strong><span>${toFaDigits(items.length)} ثبت</span></div>
+        <div class="attendance-day-total">${minutes ? 'مجموع حضور: ' + toFaDigits(formatMinutes(minutes)) : 'هنوز خروج کامل نشده'}</div>
+      </summary>
+      <div class="attendance-table-wrap">
+        <table><thead><tr>${isAdmin ? '<th>نام</th>' : ''}<th>ورود</th><th>خروج</th><th>مدت</th></tr></thead><tbody>
+          ${items.map(a => `<tr>
+            ${isAdmin ? '<td><strong>'+escapeHtml(nameOf(a.user_id))+'</strong></td>' : ''}
+            <td>${attendanceTime(a.check_in)}</td>
+            <td>${attendanceTime(a.check_out)}</td>
+            <td>${formatDuration(a.check_in, a.check_out)}</td>
+          </tr>`).join('')}
+        </tbody></table>
+      </div>
+    </details>`;
+  }).join('');
+}
+
+function formatMinutes(totalMinutes) {
+  return `${Math.floor(totalMinutes/60)} ساعت ${String(totalMinutes%60).padStart(2,'0')} دقیقه`;
+}
+
 function renderAttendanceSection() {
   const el = document.getElementById('section-attendance');
   const adminBlock = currentProfile.is_admin ? `
     <div class="card">
       <div class="row-top">
-        <h2>حضور و غیاب همه پرسنل</h2>
+        <div>
+          <h2>حضور و غیاب همه پرسنل</h2>
+          <div style="font-size:11px;color:var(--muted);">نمایش ماهانه، به‌صورت روزبه‌روز</div>
+        </div>
         <div class="row" style="margin:0;">
-          <select id="export-jy"></select>
-          <select id="export-jm"></select>
+          <select id="attendance-jy" aria-label="سال حضور و غیاب"></select>
+          <select id="attendance-jm" aria-label="ماه حضور و غیاب"></select>
           <button class="btn small" onclick="exportTimesheet()">دریافت خروجی اکسل این ماه</button>
         </div>
       </div>
-      <table><thead><tr><th>نام</th><th>تاریخ</th><th>ورود</th><th>خروج</th><th>مدت</th></tr></thead><tbody id="attendance-all-table"></tbody></table>
+      <div id="attendance-all-days" class="attendance-day-list"></div>
     </div>` : '';
+
   el.innerHTML = `
     <div class="card">
+      <div class="row-top">
+        <div>
+          <h2>ورود و خروج من</h2>
+          <div style="font-size:11px;color:var(--muted);">ثبت ورود یا خروج مستقیم از همین صفحه</div>
+        </div>
+        <div id="attendance-status-chip" class="task-summary-chip">وضعیت: —</div>
+      </div>
       <div class="counter" id="attendance-counter">--:--:--</div>
       <div style="text-align:center;"><button class="btn big" id="attendance-btn" onclick="toggleAttendance()">ثبت ورود</button></div>
-      <div style="text-align:center;margin-top:10px;"><button class="btn secondary small" onclick="openAttendanceQR()">📱 نمایش QR دفتر</button></div>
-      <h3 style="margin-top:24px;">تاریخچه</h3>
-      <table><thead><tr><th>تاریخ</th><th>ورود</th><th>خروج</th><th>مدت</th></tr></thead><tbody id="attendance-table"></tbody></table>
+      ${currentProfile.is_admin ? '<div style="text-align:center;margin-top:10px;"><button class="btn secondary small" onclick="openAttendanceQR()">▦ نمایش QR دائمی دفتر</button></div>' : ''}
+      <div class="row-top" style="margin-top:24px;margin-bottom:10px;">
+        <div>
+          <h3>تاریخچه من</h3>
+          <div style="font-size:11px;color:var(--muted);">هر روز یک بخش جدا؛ لیست بلند و شلوغ نمی‌شود.</div>
+        </div>
+        <div class="row" style="margin:0;">
+          <select id="my-attendance-jy" aria-label="سال تاریخچه"></select>
+          <select id="my-attendance-jm" aria-label="ماه تاریخچه"></select>
+        </div>
+      </div>
+      <div id="attendance-table" class="attendance-day-list"></div>
     </div>
     ${adminBlock}
   `;
+
+  fillAttendanceMonthSelectors(
+    ['my-attendance-jy','my-attendance-jm'],
+    ...(currentProfile.is_admin ? [['attendance-jy','attendance-jm']] : [])
+  );
+
+  ['my-attendance-jy','my-attendance-jm'].forEach(id => document.getElementById(id)?.addEventListener('change', loadMyAttendanceHistory));
+  if (currentProfile.is_admin) {
+    ['attendance-jy','attendance-jm'].forEach(id => document.getElementById(id)?.addEventListener('change', loadAttendanceAll));
+  }
+
   loadAttendanceStatus();
-  if (currentProfile.is_admin) { loadAttendanceAll(); fillJalaliSelectors(); }
+  loadMyAttendanceHistory();
+  if (currentProfile.is_admin) loadAttendanceAll();
+}
+
+function updateDashboardAttendanceQuickAction() {
+  const btn = document.getElementById('dashboard-attendance-btn');
+  if (!btn) return;
+  const strong = btn.querySelector('strong');
+  const meta = btn.querySelector('.sr-meta');
+  const icon = btn.querySelector('.qa-icon');
+  const active = !!activeCheckIn;
+  if (strong) strong.textContent = active ? 'ثبت خروج' : 'ثبت ورود';
+  if (meta) meta.textContent = active ? ('در حال حضور · ' + getAttendanceElapsedLabel(new Date(activeCheckIn.check_in))) : 'ثبت حضور امروز';
+  if (icon) icon.textContent = active ? '⏱️' : '🕘';
+  btn.classList.toggle('dashboard-attendance-active', active);
+}
+
+function getAttendanceElapsedLabel(startTime) {
+  if (!startTime) return '';
+  const diff = Math.max(0, Date.now() - startTime.getTime());
+  const h=String(Math.floor(diff/3600000)).padStart(2,'0');
+  const m=String(Math.floor((diff%3600000)/60000)).padStart(2,'0');
+  return `${toFaDigits(h)}:${toFaDigits(m)}`;
 }
 
 async function loadAttendanceStatus() {
-  const { data } = await sb.from('attendance').select('*').eq('user_id', currentUser.id).is('check_out', null).order('created_at', { ascending: false }).limit(1);
+  const { data, error } = await sb.from('attendance').select('*').eq('user_id', currentUser.id).is('check_out', null).order('created_at', { ascending: false }).limit(1);
+  if (error) { showToast('وضعیت حضور خوانده نشد.'); return; }
   const btn = document.getElementById('attendance-btn');
-  if (!btn) return;
+  const chip = document.getElementById('attendance-status-chip');
   if (data && data[0]) {
-    activeCheckIn = data[0]; btn.innerText = 'ثبت خروج'; startCounter(new Date(activeCheckIn.check_in));
+    activeCheckIn = data[0];
+    if (btn) { btn.innerText = 'ثبت خروج'; btn.classList.add('is-active'); }
+    if (chip) chip.innerText = 'وضعیت: در حال حضور';
+    startCounter(new Date(activeCheckIn.check_in));
   } else {
-    activeCheckIn = null; btn.innerText = 'ثبت ورود';
-    document.getElementById('attendance-counter').innerText = '--:--:--'; clearInterval(attendanceTimer);
+    activeCheckIn = null;
+    if (btn) { btn.innerText = 'ثبت ورود'; btn.classList.remove('is-active'); }
+    if (chip) chip.innerText = 'وضعیت: خارج از دفتر';
+    const c = document.getElementById('attendance-counter');
+    if (c) c.innerText = '--:--:--';
+    clearInterval(attendanceTimer);
   }
+  updateDashboardAttendanceQuickAction();
   loadMyAttendanceHistory();
 }
+
 function startCounter(startTime) {
   clearInterval(attendanceTimer);
-  attendanceTimer = setInterval(() => {
-    const diff = Date.now() - startTime.getTime();
+  const tick = () => {
+    const diff = Math.max(0, Date.now() - startTime.getTime());
     const h = String(Math.floor(diff/3600000)).padStart(2,'0');
     const m = String(Math.floor((diff%3600000)/60000)).padStart(2,'0');
-    const s = String(Math.floor((diff%60000)/1000)).padStart(2,'0');
+    const sec = String(Math.floor((diff%60000)/1000)).padStart(2,'0');
     const c = document.getElementById('attendance-counter');
-    if (c) c.innerText = `${h}:${m}:${s}`;
-  }, 1000);
+    if (c) c.innerText = `${h}:${m}:${sec}`;
+    updateDashboardAttendanceQuickAction();
+  };
+  tick();
+  attendanceTimer = setInterval(tick, 1000);
 }
+
 async function toggleAttendance() {
-  if (activeCheckIn) await sb.from('attendance').update({ check_out: new Date().toISOString() }).eq('id', activeCheckIn.id);
-  else await sb.from('attendance').insert([{ user_id: currentUser.id, check_in: new Date().toISOString() }]);
-  loadAttendanceStatus();
+  const buttons = [document.getElementById('attendance-btn'), document.getElementById('dashboard-attendance-btn')].filter(Boolean);
+  if (toggleAttendance.busy) return;
+  toggleAttendance.busy = true;
+  buttons.forEach(b => { b.disabled = true; b.style.opacity = '.7'; });
+
+  try {
+    let error = null;
+    const now = new Date().toISOString();
+    if (activeCheckIn) {
+      ({ error } = await sb.from('attendance').update({ check_out: now }).eq('id', activeCheckIn.id).eq('user_id', currentUser.id));
+    } else {
+      ({ error } = await sb.from('attendance').insert([{ user_id: currentUser.id, check_in: now }]));
+    }
+    if (error) { showToast('ثبت حضور و غیاب انجام نشد.'); return; }
+    showToast(activeCheckIn ? 'خروج با موفقیت ثبت شد ✅' : 'ورود با موفقیت ثبت شد ✅');
+    await loadAttendanceStatus();
+    if (currentProfile?.is_admin && document.getElementById('attendance-all-days')) await loadAttendanceAll();
+  } finally {
+    toggleAttendance.busy = false;
+    buttons.forEach(b => { b.disabled = false; b.style.opacity = ''; });
+    updateDashboardAttendanceQuickAction();
+  }
 }
+
 function formatDuration(inTime, outTime) {
   if (!outTime) return '—';
   const diff = new Date(outTime) - new Date(inTime);
+  if (!Number.isFinite(diff) || diff < 0) return '—';
   return `${Math.floor(diff/3600000)} ساعت ${Math.floor((diff%3600000)/60000)} دقیقه`;
 }
+
 async function loadMyAttendanceHistory() {
-  const { data } = await sb.from('attendance').select('*').eq('user_id', currentUser.id).order('check_in', { ascending: false }).limit(30);
-  const tbody = document.getElementById('attendance-table'); if (!tbody) return;
-  tbody.innerHTML = (data||[]).map(a => `<tr>
-    <td>${new Date(a.check_in).toLocaleDateString('fa-IR')}</td>
-    <td>${new Date(a.check_in).toLocaleTimeString('fa-IR')}</td>
-    <td>${a.check_out ? new Date(a.check_out).toLocaleTimeString('fa-IR') : '—'}</td>
-    <td>${formatDuration(a.check_in, a.check_out)}</td>
-  </tr>`).join('');
+  const sel = attendanceSelection('my-attendance-jy','my-attendance-jm') || currentAttendanceMonth();
+  const { start, end } = attendanceMonthRange(sel.jy, sel.jm);
+  const { data, error } = await sb.from('attendance')
+    .select('*')
+    .eq('user_id', currentUser.id)
+    .gte('check_in', start)
+    .lt('check_in', end)
+    .order('check_in', { ascending: true });
+  const box = document.getElementById('attendance-table');
+  if (!box) return;
+  if (error) { box.innerHTML = '<div class="empty">خواندن تاریخچه انجام نشد.</div>'; return; }
+  box.innerHTML = renderAttendanceDays(data || [], false);
 }
+
 async function loadAttendanceAll() {
-  const { data } = await sb.from('attendance').select('*').order('check_in', { ascending: false }).limit(100);
-  const tbody = document.getElementById('attendance-all-table'); if (!tbody) return;
-  tbody.innerHTML = (data||[]).map(a => `<tr>
-    <td>${escapeHtml(nameOf(a.user_id))}</td>
-    <td>${new Date(a.check_in).toLocaleDateString('fa-IR')}</td>
-    <td>${new Date(a.check_in).toLocaleTimeString('fa-IR')}</td>
-    <td>${a.check_out ? new Date(a.check_out).toLocaleTimeString('fa-IR') : '—'}</td>
-    <td>${formatDuration(a.check_in, a.check_out)}</td>
-  </tr>`).join('');
+  const sel = attendanceSelection('attendance-jy','attendance-jm') || currentAttendanceMonth();
+  const { start, end } = attendanceMonthRange(sel.jy, sel.jm);
+  const { data, error } = await sb.from('attendance')
+    .select('*')
+    .gte('check_in', start)
+    .lt('check_in', end)
+    .order('check_in', { ascending: true });
+  const box = document.getElementById('attendance-all-days');
+  if (!box) return;
+  if (error) { box.innerHTML = '<div class="empty">خواندن حضور و غیاب انجام نشد.</div>'; return; }
+  box.innerHTML = renderAttendanceDays(data || [], true);
+}
+
+const JALALI_MONTHS = ['فروردین','اردیبهشت','خرداد','تیر','مرداد','شهریور','مهر','آبان','آذر','دی','بهمن','اسفند'];
+function exportTimesheet() {
+  const sel = attendanceSelection('attendance-jy','attendance-jm');
+  if (!sel) { alert('سال و ماه رو انتخاب کن'); return; }
+  window.open(`/api/export-timesheet?jy=${sel.jy}&jm=${sel.jm}`, '_blank');
 }
 
 const HOLIDAYS_1405 = {
@@ -1310,14 +1522,16 @@ function runGlobalSearch(query){
 window.addEventListener('keydown',(e)=>{if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='k'){e.preventDefault();openGlobalSearch();}if(e.key==='Escape')closeGlobalSearch();});
 function enhanceDashboard(){
   const section=document.getElementById('section-dashboard'); if(!section)return;
-  if(!document.getElementById('dashboard-quick-actions')){
+  if(!document.getElementById('dashboard-quick-actions') && !section.querySelector('.quick-actions')){
     const card=document.createElement('div'); card.className='card';
-    const actions=currentProfile?.is_admin ? [['🕘','ثبت ورود / خروج','attendance'],['✓','کار جدید','tasks'],['👤','کارفرمای جدید','clients'],['🏗️','پروژه جدید','projects']] : [['🕘','ثبت ورود / خروج','attendance'],['✓','کار جدید','tasks'],['📅','تقویم','calendar']];
     card.innerHTML='<div class="row-top"><h2>⚡ دسترسی سریع</h2><span style="font-size:11px;color:var(--muted)">کارهای پرتکرار دفتر</span></div><div id="dashboard-quick-actions" class="quick-actions"></div>';
     section.insertBefore(card,section.firstElementChild);
     const grid=card.querySelector('#dashboard-quick-actions');
+    const b=document.createElement('button'); b.className='quick-action dashboard-attendance-action'; b.id='dashboard-attendance-btn'; b.innerHTML='<span class="qa-icon">🕘</span><span><strong>ثبت ورود</strong><div class="sr-meta">ثبت حضور امروز</div></span>'; b.onclick=()=>toggleAttendance(); grid.appendChild(b);
+    const actions=currentProfile?.is_admin ? [['✓','کار جدید','tasks'],['👤','کارفرمای جدید','clients'],['🏗️','پروژه جدید','projects']] : [['✓','کار جدید','tasks'],['📅','تقویم','calendar']];
     actions.forEach(a=>{const b=document.createElement('button');b.className='quick-action';b.innerHTML='<span class="qa-icon">'+a[0]+'</span><span><strong>'+a[1]+'</strong><div class="sr-meta">باز کردن بخش</div></span>';b.onclick=()=>switchSection(a[2]);grid.appendChild(b);});
   }
+  updateDashboardAttendanceQuickAction();
   if(!document.getElementById('dashboard-deadlines')){
     const taskList=currentProfile?.is_admin?[...(erpTasks||[]), ...(teamPersonalTasks||[])]: (personalTasks||[]);
     const todayStr=new Date().toISOString().slice(0,10);
@@ -1354,7 +1568,7 @@ function renderPersonalDashboard() {
     <div class="card">
       <div class="row-top"><h2>⚡ دسترسی سریع</h2></div>
       <div class="quick-actions">
-        <button class="quick-action" onclick="switchSection('attendance')"><span class="qa-icon">🕘</span><span><strong>ورود و خروج</strong><div class="sr-meta">ثبت حضور امروز</div></span></button>
+        <button class="quick-action dashboard-attendance-action" id="dashboard-attendance-btn" onclick="toggleAttendance()"><span class="qa-icon">🕘</span><span><strong>ثبت ورود</strong><div class="sr-meta">ثبت حضور امروز</div></span></button>
         <button class="quick-action" onclick="switchSection('tasks')"><span class="qa-icon">✓</span><span><strong>کار جدید</strong><div class="sr-meta">افزودن کار</div></span></button>
         <button class="quick-action" onclick="switchSection('calendar')"><span class="qa-icon">📅</span><span><strong>تقویم</strong><div class="sr-meta">دیدن ددلاین‌ها</div></span></button>
       </div>
@@ -1997,8 +2211,8 @@ async function saveEditModal(table, id) {
 checkSession();
 
 const _attendanceQrParam = new URLSearchParams(location.search).get('attendance_qr');
-if (_attendanceQrParam) {
-  sessionStorage.setItem('dast_pending_attendance_qr', _attendanceQrParam);
+if (_attendanceQrParam === 'office') {
+  sessionStorage.setItem('dast_pending_attendance_qr', 'office');
   window.history.replaceState({}, '', location.pathname);
   setTimeout(() => window.tryPendingAttendanceQR?.(), 900);
 }
