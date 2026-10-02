@@ -670,6 +670,93 @@ body.dark .header-search{background:rgba(25,26,36,.96)!important}
 @media(max-width:700px){
   #top-nav{border-radius:20px 0 0 20px!important}
 }
+/* ===== Motion + layout stability polish ===== */
+main{
+  margin-inline-start:calc(var(--sidebar-w) + 8px)!important;
+}
+.app-footer{
+  margin-inline-start:calc(var(--sidebar-w) + 8px)!important;
+}
+.content-shell > div:not(.hidden){
+  animation:studioPageIn .32s cubic-bezier(.22,.8,.2,1) both;
+}
+.content-shell > div:not(.hidden) > *{
+  animation:studioItemIn .34s cubic-bezier(.22,.8,.2,1) both;
+}
+.content-shell > div:not(.hidden) > *:nth-child(2){animation-delay:.035s}
+.content-shell > div:not(.hidden) > *:nth-child(3){animation-delay:.07s}
+.content-shell > div:not(.hidden) > *:nth-child(4){animation-delay:.105s}
+.content-shell > div:not(.hidden) > *:nth-child(5){animation-delay:.14s}
+.content-shell > div:not(.hidden) > *:nth-child(n+6){animation-delay:.16s}
+.sidebar-nav-item{
+  transition:transform .18s cubic-bezier(.22,.8,.2,1),background-color .2s ease,color .2s ease,border-color .2s ease,box-shadow .2s ease;
+}
+.sidebar-nav-item .sidebar-nav-icon{
+  transition:transform .2s cubic-bezier(.22,.8,.2,1),background-color .2s ease;
+}
+.sidebar-nav-item:hover .sidebar-nav-icon{transform:translateY(-1px) scale(1.04)}
+.sidebar-nav-item.active{animation:sidebarActiveIn .24s cubic-bezier(.22,.8,.2,1) both}
+.sidebar-group-items{will-change:max-height;transform-origin:top}
+.sidebar-group.is-open .sidebar-group-items{animation:sidebarGroupOpen .22s ease-out both}
+.sidebar-group-toggle{transition:color .15s ease,background-color .15s ease,border-radius .15s ease}
+.sidebar-group-toggle:hover{background:rgba(91,81,177,.045);color:var(--text);border-radius:10px}
+.sidebar-group-chevron{transition:transform .22s cubic-bezier(.22,.8,.2,1)}
+.header-user-menu,.header-icon-btn,.header-status-btn,.header-search{
+  transition:transform .18s cubic-bezier(.22,.8,.2,1),box-shadow .2s ease,border-color .2s ease,background-color .2s ease;
+}
+.header-user-menu:hover,.header-icon-btn:hover,.header-status-btn:hover,.header-search:hover{
+  transform:translateY(-2px);
+}
+.card,.stat,.lead-card,.stage-col,.task-kanban-card,.employee-card,.task-source-card{
+  transition:transform .2s cubic-bezier(.22,.8,.2,1),box-shadow .2s ease,border-color .2s ease;
+}
+.card:hover,.stat:hover,.employee-card:hover,.task-source-card:hover{
+  transform:translateY(-3px);
+}
+.quick-action:hover,.task-kanban-card:hover,.lead-card:hover{
+  transform:translateY(-2px);
+}
+.btn{
+  transition:transform .16s cubic-bezier(.22,.8,.2,1),box-shadow .18s ease,background-color .18s ease,border-color .18s ease;
+}
+.btn:hover{transform:translateY(-1px)}
+.btn:active{transform:scale(.97)}
+.overlay{animation:studioOverlayIn .2s ease both}
+.modal{animation:studioModalIn .26s cubic-bezier(.22,.8,.2,1) both}
+.notification-item{
+  animation:studioItemIn .22s cubic-bezier(.22,.8,.2,1) both;
+}
+@keyframes studioPageIn{
+  from{opacity:0;transform:translateY(10px) scale(.992)}
+  to{opacity:1;transform:none}
+}
+@keyframes studioItemIn{
+  from{opacity:0;transform:translateY(7px)}
+  to{opacity:1;transform:none}
+}
+@keyframes sidebarActiveIn{
+  from{opacity:.7;transform:translateX(4px)}
+  to{opacity:1;transform:none}
+}
+@keyframes sidebarGroupOpen{
+  from{opacity:.72;transform:translateY(-3px)}
+  to{opacity:1;transform:none}
+}
+@keyframes studioOverlayIn{
+  from{opacity:0}
+  to{opacity:1}
+}
+@keyframes studioModalIn{
+  from{opacity:0;transform:translateY(14px) scale(.985)}
+  to{opacity:1;transform:none}
+}
+@media(max-width:900px){
+  main,.app-footer{margin-inline-start:0!important}
+}
+@media(prefers-reduced-motion:reduce){
+  .content-shell > div:not(.hidden),.content-shell > div:not(.hidden) > *, .sidebar-nav-item.active, .sidebar-group.is-open .sidebar-group-items, .overlay,.modal,.notification-item{animation:none!important}
+  .sidebar-nav-item,.sidebar-nav-item .sidebar-nav-icon,.header-user-menu,.header-icon-btn,.header-status-btn,.header-search,.card,.stat,.lead-card,.stage-col,.task-kanban-card,.employee-card,.task-source-card,.btn{transition:none!important}
+}
 </style>
 </head>
 <body>
