@@ -11,8 +11,8 @@ self.addEventListener('push', (event) => {
     renotify: !!data.tag,
     dir: 'rtl',
     lang: 'fa',
-    icon: '/icons/icon-192.png',
-    badge: '/icons/icon-192.png',
+    icon: 'https://s6.uupload.ir/files/logo_512_os2e.png',
+    badge: 'https://s6.uupload.ir/files/logo_512_os2e.png',
     data: { url: data.url || '/' }
   }));
 });
