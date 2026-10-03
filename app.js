@@ -1849,6 +1849,14 @@ function renderPersonalDashboard() {
   const high = active.filter(t => t.priority === 'بالا');
   return `
     ${dashboardGreeting('کارهای مهمت، حضور امروز و ددلاین‌های نزدیکت اینجا جمع شده‌اند.')}
+    <div class="card">
+      <div class="row-top"><h2>⚡ دسترسی سریع</h2><span style="font-size:11px;color:var(--muted)">کارهای پرتکرار دفتر</span></div>
+      <div class="quick-actions">
+        <button class="quick-action dashboard-attendance-action" id="dashboard-attendance-btn" onclick="toggleAttendance()"><span class="qa-icon">🕘</span><span><strong>ثبت ورود</strong><div class="sr-meta">ثبت حضور امروز</div></span></button>
+        <button class="quick-action" onclick="switchSection('tasks')"><span class="qa-icon">✓</span><span><strong>کار جدید</strong><div class="sr-meta">افزودن کار</div></span></button>
+        <button class="quick-action" onclick="switchSection('calendar')"><span class="qa-icon">📅</span><span><strong>تقویم</strong><div class="sr-meta">دیدن ددلاین‌ها</div></span></button>
+      </div>
+    </div>
     <div class="grid-stats">
       <div class="stat"><div class="num">${active.length}</div><div class="label">کار باز</div></div>
       <div class="stat"><div class="num" style="color:var(--danger);">${overdue.length}</div><div class="label">عقب‌افتاده</div></div>
@@ -1863,14 +1871,7 @@ function renderPersonalDashboard() {
           <div class="meta" style="margin-top:6px">${taskDueMeta(t)} · ${statusLabel(t.status)}</div>
         </div>`).join('') || '<div class="empty">فعلاً کار بازی نداری 🎉</div>'}
     </div>
-    <div class="card">
-      <div class="row-top"><h2>⚡ دسترسی سریع</h2></div>
-      <div class="quick-actions">
-        <button class="quick-action dashboard-attendance-action" id="dashboard-attendance-btn" onclick="toggleAttendance()"><span class="qa-icon">🕘</span><span><strong>ثبت ورود</strong><div class="sr-meta">ثبت حضور امروز</div></span></button>
-        <button class="quick-action" onclick="switchSection('tasks')"><span class="qa-icon">✓</span><span><strong>کار جدید</strong><div class="sr-meta">افزودن کار</div></span></button>
-        <button class="quick-action" onclick="switchSection('calendar')"><span class="qa-icon">📅</span><span><strong>تقویم</strong><div class="sr-meta">دیدن ددلاین‌ها</div></span></button>
-      </div>
-    </div>`;
+`;
 }
 function renderDashboard() {
   if (!currentProfile?.is_admin) return renderPersonalDashboard();
