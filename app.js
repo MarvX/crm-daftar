@@ -330,6 +330,7 @@ function mod(a, b) {
 return { toJalaali, toGregorian, isValidJalaaliDate, jalaaliMonthLength };
 })();
 
+const STUDIO_LOGO_URL = 'https://s6.uupload.ir/files/logo_512_os2e.png';
 const SUPABASE_URL = "https://ooeedxwyjpcgurxeutdb.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9vZWVkeHd5anBjZ3VyeGV1dGRiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAwNzM4NTEsImV4cCI6MjEwNTY0OTg1MX0.ZbDel9uPG0sSsdzWRbgvrH_inLA7IafmprYTpqhTPXQ";
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -570,7 +571,7 @@ function buildNav(activeId = activeSectionId) {
   nav.innerHTML = `
     <div class="sidebar-head">
       <div class="sidebar-brand">
-        <div class="sidebar-brand-mark">د</div>
+        <div class="sidebar-brand-mark"><img src="${STUDIO_LOGO_URL}" alt="لوگوی دَست استودیو" loading="eager"></div>
         <div><strong>دَست استودیو</strong><span>ERP مدیریت دفتر</span></div>
       </div>
       <button type="button" class="sidebar-mobile-close" onclick="setSidebarOpen(false)" aria-label="بستن منو">×</button>
@@ -660,8 +661,13 @@ function switchSection(id) {
 }
 
 async function loadProfileAndShowApp() {
-  const { data: profile } = await sb.from('profiles').select('*').eq('id', currentUser.id).single();
-  currentProfile = profile || { full_name: currentUser.email, is_admin: false };
+  const { data: profile, error: profileError } = await sb.from('profiles').select('*').eq('id', currentUser.id).single();
+  currentProfile = profile || {
+    full_name: currentUser.user_metadata?.full_name || currentUser.email?.split('@')[0] || 'کاربر دفتر',
+    role_title: '',
+    is_admin: false
+  };
+  if (profileError) console.warn('Profile load failed:', profileError.message);
   document.getElementById('login-screen').classList.add('hidden');
   document.getElementById('app-root').classList.remove('hidden');
   document.getElementById('user-badge').innerText = `${currentProfile.full_name || ''} ${currentProfile.role_title ? '— ' + currentProfile.role_title : ''}`;
@@ -1781,7 +1787,9 @@ function enhanceDashboard(){
   if(!document.getElementById('dashboard-quick-actions') && !section.querySelector('.quick-actions')){
     const card=document.createElement('div'); card.className='card';
     card.innerHTML='<div class="row-top"><h2>⚡ دسترسی سریع</h2><span style="font-size:11px;color:var(--muted)">کارهای پرتکرار دفتر</span></div><div id="dashboard-quick-actions" class="quick-actions"></div>';
-    section.insertBefore(card,section.firstElementChild);
+    const greeting = section.querySelector('.dashboard-greeting');
+    if (greeting) greeting.after(card);
+    else section.insertBefore(card,section.firstElementChild);
     const grid=card.querySelector('#dashboard-quick-actions');
     const b=document.createElement('button'); b.className='quick-action dashboard-attendance-action'; b.id='dashboard-attendance-btn'; b.innerHTML='<span class="qa-icon">🕘</span><span><strong>ثبت ورود</strong><div class="sr-meta">ثبت حضور امروز</div></span>'; b.onclick=()=>toggleAttendance(); grid.appendChild(b);
     const actions=currentProfile?.is_admin ? [['✓','کار جدید','tasks'],['👤','کارفرمای جدید','clients'],['🏗️','پروژه جدید','projects']] : [['✓','کار جدید','tasks'],['📅','تقویم','calendar']];
