@@ -571,15 +571,15 @@ function buildNav(activeId = activeSectionId) {
   nav.innerHTML = `
     <div class="sidebar-head">
       <div class="sidebar-brand">
-        <div class="sidebar-brand-mark"><img src="${STUDIO_LOGO_URL}" alt="لوگوی دَست استودیو" loading="eager"></div>
-        <div><strong>دَست استودیو</strong><span>ERP مدیریت دفتر</span></div>
+        <div class="sidebar-brand-mark"><img src="${STUDIO_LOGO_URL}" alt="لوگوی استودیو معماری دَست" loading="eager"></div>
+        <div><strong>استودیو معماری دَست</strong><span>ERP مدیریت دفتر</span></div>
       </div>
       <button type="button" class="sidebar-mobile-close" onclick="setSidebarOpen(false)" aria-label="بستن منو">×</button>
     </div>
     <div class="sidebar-scroll">${groupHtml}</div>
     <div class="sidebar-foot">
       <button type="button" class="sidebar-logout" onclick="doLogout()"><span class="sidebar-logout-icon">↪</span><span>خروج از حساب</span></button>
-      <div class="sidebar-foot-note"><span class="sidebar-foot-dot"></span><span>پنل داخلی دَست استودیو</span></div>
+      <div class="sidebar-foot-note"><span class="sidebar-foot-dot"></span><span>پنل داخلی استودیو معماری دَست</span></div>
     </div>`;
 }
 
@@ -1821,7 +1821,7 @@ function dashboardGreeting(context = '') {
       </div>
       <div class="dashboard-greeting-copy">
         <div class="dashboard-greeting-kicker">صبح بخیر، ${name} <span>🌤️</span></div>
-        <h2>خوش اومدی به دَست استودیو</h2>
+        <h2>خوش اومدی به استودیو معماری دَست</h2>
         <p>${context} <span class="greeting-inline-emoji">🚀</span></p>
       </div>
       <div class="dashboard-greeting-role"><span>سمت</span><strong>${escapeHtml(role)}</strong></div>
