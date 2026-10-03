@@ -330,7 +330,17 @@ function mod(a, b) {
 return { toJalaali, toGregorian, isValidJalaaliDate, jalaaliMonthLength };
 })();
 
-const STUDIO_LOGO_URL = 'https://s6.uupload.ir/files/logo_512_os2e.png';
+const STUDIO_LOGO_LIGHT_URL = 'https://s6.uupload.ir/files/logo_blue_512_ljgq.png';
+const STUDIO_LOGO_DARK_URL = 'https://s6.uupload.ir/files/logo_white_512_ox26.png';
+function studioLogoUrl() {
+  return document.body.classList.contains('dark') ? STUDIO_LOGO_DARK_URL : STUDIO_LOGO_LIGHT_URL;
+}
+function updateStudioLogos() {
+  const url = studioLogoUrl();
+  document.querySelectorAll('[data-studio-logo]').forEach(img => {
+    if (img.getAttribute('src') !== url) img.setAttribute('src', url);
+  });
+}
 const SUPABASE_URL = "https://ooeedxwyjpcgurxeutdb.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9vZWVkeHd5anBjZ3VyeGV1dGRiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAwNzM4NTEsImV4cCI6MjEwNTY0OTg1MX0.ZbDel9uPG0sSsdzWRbgvrH_inLA7IafmprYTpqhTPXQ";
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -571,7 +581,7 @@ function buildNav(activeId = activeSectionId) {
   nav.innerHTML = `
     <div class="sidebar-head">
       <div class="sidebar-brand">
-        <div class="sidebar-brand-mark"><img src="${STUDIO_LOGO_URL}" alt="لوگوی استودیو معماری دَست" loading="eager"></div>
+        <div class="sidebar-brand-mark"><img data-studio-logo src="${studioLogoUrl()}" alt="لوگوی استودیو معماری دَست" loading="eager"></div>
         <div><strong>استودیو معماری دَست</strong><span>ERP مدیریت دفتر</span></div>
       </div>
       <button type="button" class="sidebar-mobile-close" onclick="setSidebarOpen(false)" aria-label="بستن منو">×</button>
@@ -1058,6 +1068,9 @@ function toggleDarkMode() {
   document.body.classList.toggle('dark');
   localStorage.setItem('dast-dark', document.body.classList.contains('dark') ? '1' : '0');
   updateDarkButton();
+  updateStudioLogos();
+  const group = document.querySelector('[data-nav-group]');
+  if (group) buildNav(activeSectionId);
 }
 function updateDarkButton() {
   const b=document.getElementById('dark-btn'); if(!b) return;
@@ -1067,7 +1080,7 @@ function updateDarkButton() {
   b.title=isDark?'تغییر به حالت روشن':'تغییر به حالت تیره';
   b.setAttribute('aria-label',b.title);
 }
-function initDarkMode(){ if(localStorage.getItem('dast-dark')==='1') document.body.classList.add('dark'); updateDarkButton(); }
+function initDarkMode(){ if(localStorage.getItem('dast-dark')==='1') document.body.classList.add('dark'); updateDarkButton(); updateStudioLogos(); }
 
 let calendarJY = null, calendarJM = null, calendarSelectedDay = null;
 
