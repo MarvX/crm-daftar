@@ -1,0 +1,47 @@
+/* Dast Studio mobile-first UX */
+.mobile-bottom-nav{display:none}
+@media(max-width:900px){
+  body{padding-bottom:92px!important}
+  .app-header{position:sticky!important;top:0!important;z-index:48!important;margin:0!important;width:100%!important;padding:calc(8px + env(safe-area-inset-top)) 12px 10px!important;background:rgba(236,236,241,.90)!important;backdrop-filter:blur(20px) saturate(150%)!important}
+  body.dark .app-header{background:rgba(15,16,22,.90)!important}
+  .header-main{display:grid!important;grid-template-columns:1fr auto!important;gap:8px!important}
+  .header-actions{grid-column:2;grid-row:1;gap:5px!important;justify-content:flex-end!important}
+  .header-user-menu{min-height:40px!important;max-width:148px!important;padding:4px 7px!important;border-radius:14px!important}
+  .header-avatar{width:30px!important;height:30px!important;border-radius:10px!important}
+  .header-user-copy strong{font-size:10px!important;max-width:64px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .header-user-copy small,.header-user-arrow{display:none!important}
+  .header-actions .header-status-btn,.header-actions #install-btn,.header-actions #dark-btn,.header-actions #notif-btn,.header-actions .header-logout-icon,.header-actions .header-menu-toggle{display:none!important}
+  .header-actions .notification-bell{display:grid!important}
+  .header-icon-btn.notification-bell{width:40px!important;min-width:40px!important;height:40px!important;border-radius:13px!important}
+  .header-context{display:flex!important;grid-column:1;grid-row:1;min-width:0;order:-1}
+  .header-context-title h1{font-size:17px!important}
+  .header-context-title span{font-size:9px!important}
+  .header-search{grid-column:1/-1!important;grid-row:2!important;width:100%!important;max-width:none!important;min-height:42px!important;margin-top:2px!important;border-radius:14px!important;padding:0 11px!important}
+  .header-search-text{font-size:10px!important}.header-search kbd{display:none!important}
+  main{margin:0!important;width:100%!important;max-width:none!important;padding:14px 12px 30px!important}
+  .content-shell{max-width:none!important}.content-page-heading{display:none!important}
+  .card,.stat{border-radius:18px!important}
+  .grid-stats{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+  .quick-actions{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  #top-nav{top:0!important;right:0!important;bottom:0!important;left:auto!important;width:min(88vw,340px)!important;height:100dvh!important;min-height:100vh!important;border-radius:24px 0 0 24px!important;transform:translateX(105%)!important;transition:transform .24s cubic-bezier(.22,.8,.2,1)!important;z-index:70!important}
+  body.sidebar-open #top-nav{transform:translateX(0)!important}
+  .mobile-bottom-nav{position:fixed;display:grid;grid-template-columns:repeat(5,1fr);left:10px;right:10px;bottom:calc(8px + env(safe-area-inset-bottom));z-index:65;padding:7px 6px;background:rgba(255,255,255,.92);border:1px solid rgba(226,226,236,.96);border-radius:22px;box-shadow:0 12px 36px rgba(25,27,45,.14);backdrop-filter:blur(20px) saturate(155%)}
+  body.dark .mobile-bottom-nav{background:rgba(25,26,36,.94);border-color:#30313f;box-shadow:0 14px 42px rgba(0,0,0,.32)}
+  .mobile-bottom-nav button{min-height:58px;border:0;background:transparent;color:var(--muted);border-radius:16px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font:700 9px var(--font-ui);cursor:pointer;-webkit-tap-highlight-color:transparent}
+  .mobile-bottom-nav button:active{transform:scale(.94)}
+  .mobile-bottom-nav button.active{background:rgba(91,81,177,.11);color:var(--navy-light)}
+  body.dark .mobile-bottom-nav button.active{background:rgba(129,120,220,.16);color:#c9c5ff}
+  .mobile-nav-icon{width:30px;height:30px;border-radius:10px;display:grid;place-items:center;font-size:17px;font-weight:900;line-height:1}
+  .mobile-bottom-nav button.active .mobile-nav-icon{background:rgba(91,81,177,.13)}
+  #sidebar-backdrop{z-index:68!important}
+  .sidebar-head{padding-top:calc(8px + env(safe-area-inset-top))}
+  .sidebar-mobile-close{display:grid!important}
+  .app-footer{display:none!important}
+}
+@media(max-width:480px){
+  .mobile-bottom-nav{left:8px;right:8px;border-radius:20px}
+  .mobile-bottom-nav button{min-height:55px;font-size:8.5px}
+  .header-user-menu{max-width:138px!important}
+}
+@media(prefers-reduced-motion:reduce){#top-nav,.mobile-bottom-nav button{transition:none!important}}
