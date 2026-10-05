@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>استودیو معماری دَست | ERP دفتر</title>
 <link rel="manifest" href="/manifest.json">
+<link rel="stylesheet" href="/mobile.css">
 <link rel="icon" href="/assets/logo_blue.svg" type="image/png" media="(prefers-color-scheme: light)">
 <link rel="icon" href="/assets/logo_white.svg" type="image/png" media="(prefers-color-scheme: dark)">
 <meta name="theme-color" content="#342D73">
@@ -999,6 +1000,13 @@ body.dark .studio-logo-dark{display:block!important}
   </header>
   <nav id="top-nav" aria-label="منوی اصلی"></nav>
   <div id="sidebar-backdrop" class="hidden" onclick="setSidebarOpen(false)" aria-hidden="true"></div>
+  <nav id="mobile-bottom-nav" class="mobile-bottom-nav" aria-label="دسترسی سریع موبایل">
+    <button type="button" data-mobile-section="dashboard" onclick="switchSection('dashboard')"><span class="mobile-nav-icon">⌂</span><span>خانه</span></button>
+    <button type="button" data-mobile-section="tasks" onclick="switchSection('tasks')"><span class="mobile-nav-icon">✓</span><span>کارها</span></button>
+    <button type="button" data-mobile-section="calendar" onclick="switchSection('calendar')"><span class="mobile-nav-icon">▣</span><span>تقویم</span></button>
+    <button type="button" data-mobile-section="attendance" onclick="switchSection('attendance')"><span class="mobile-nav-icon">◷</span><span>حضور</span></button>
+    <button type="button" data-mobile-more onclick="toggleSidebar()"><span class="mobile-nav-icon">☰</span><span>بیشتر</span></button>
+  </nav>
   <main>
     <div class="content-shell">
       <div class="content-page-heading">
