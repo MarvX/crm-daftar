@@ -654,6 +654,17 @@ function updateHeaderContext(id = activeSectionId) {
   }
 }
 
+function playBrandSectionMotion() {
+  if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
+  const old = document.querySelector('.brand-section-mark');
+  if (old) old.remove();
+  const mark = document.createElement('div');
+  mark.className = 'brand-section-mark';
+  mark.innerHTML = '<img src="/assets/logo_white.svg" alt="">';
+  document.body.appendChild(mark);
+  setTimeout(() => mark.remove(), 760);
+}
+
 function switchSection(id) {
   activeSectionId = id;
   updateHeaderContext(id);
@@ -663,6 +674,10 @@ function switchSection(id) {
   const section = document.getElementById('section-' + id);
   if (!section) return;
   section.classList.remove('hidden');
+  section.classList.remove('section-motion');
+  void section.offsetWidth;
+  section.classList.add('section-motion');
+  if (typeof activeSectionId !== 'undefined' && activeSectionId !== id) playBrandSectionMotion();
   setSidebarOpen(false);
 
   const renderMap = {
