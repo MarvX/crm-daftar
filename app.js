@@ -330,8 +330,8 @@ function mod(a, b) {
 return { toJalaali, toGregorian, isValidJalaaliDate, jalaaliMonthLength };
 })();
 
-const STUDIO_LOGO_LIGHT_URL = 'https://s6.uupload.ir/files/logo_blue_512_ljgq.png';
-const STUDIO_LOGO_DARK_URL = 'https://s6.uupload.ir/files/logo_white_512_ox26.png';
+const STUDIO_LOGO_LIGHT_URL = '/assets/logo_blue.svg';
+const STUDIO_LOGO_DARK_URL = '/assets/logo_white.svg';
 function studioLogoUrl() {
   return document.body.classList.contains('dark') ? STUDIO_LOGO_DARK_URL : STUDIO_LOGO_LIGHT_URL;
 }
