@@ -666,6 +666,7 @@ function playBrandSectionMotion() {
 }
 
 function switchSection(id) {
+  const previousSectionId = activeSectionId;
   activeSectionId = id;
   updateHeaderContext(id);
   buildNav(id);
@@ -677,7 +678,7 @@ function switchSection(id) {
   section.classList.remove('section-motion');
   void section.offsetWidth;
   section.classList.add('section-motion');
-  if (typeof activeSectionId !== 'undefined' && activeSectionId !== id) playBrandSectionMotion();
+  if (typeof previousSectionId !== 'undefined' && previousSectionId && previousSectionId !== id) playBrandSectionMotion();
   setSidebarOpen(false);
 
   const renderMap = {
