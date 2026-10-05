@@ -593,6 +593,16 @@ function buildNav(activeId = activeSectionId) {
     </div>`;
 }
 
+function updateMobileBottomNav(activeId = activeSectionId) {
+  const root = document.getElementById('mobile-bottom-nav');
+  if (!root) return;
+  root.querySelectorAll('[data-mobile-section]').forEach(btn => {
+    const active = btn.dataset.mobileSection === activeId;
+    btn.classList.toggle('active', active);
+    btn.setAttribute('aria-current', active ? 'page' : 'false');
+  });
+}
+
 function toggleNavGroup(groupId) {
   const nav = document.getElementById('top-nav');
   const group = nav?.querySelector('[data-nav-group="' + groupId + '"]');
@@ -645,6 +655,7 @@ function switchSection(id) {
   activeSectionId = id;
   updateHeaderContext(id);
   buildNav(id);
+  updateMobileBottomNav(id);
   document.querySelectorAll('main > .content-shell > div').forEach(d => d.classList.add('hidden'));
   const section = document.getElementById('section-' + id);
   if (!section) return;
@@ -688,6 +699,9 @@ async function loadProfileAndShowApp() {
   updateHeaderContext('dashboard');
   initDarkMode();
   switchSection('dashboard');
+  const mobileSection = new URLSearchParams(location.search).get('section');
+  const mobileAllowed = ['dashboard','tasks','calendar','attendance','profile','projects','pipeline','clients','contracts','team','employees','costs','tenders','office-tasks','erp-tasks'];
+  if (mobileSection && mobileAllowed.includes(mobileSection)) setTimeout(() => switchSection(mobileSection), 0);
   loadAttendanceStatus();
   loadMyTasks();
   refreshGoogleStatus();
