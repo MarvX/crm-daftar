@@ -126,3 +126,66 @@
   #top-nav,#sidebar-backdrop,.mobile-bottom-nav{transition:none!important;animation:none!important}
   body.sidebar-open .mobile-bottom-nav{transform:none!important}
 }
+/* ===== Dast Studio branded motion system ===== */
+@keyframes brandSplashLogo{
+  0%{opacity:0;transform:translateY(12px) scale(.72) rotate(-6deg);filter:blur(5px)}
+  28%{opacity:1;transform:translateY(0) scale(1.06) rotate(0);filter:blur(0);box-shadow:0 0 0 0 rgba(255,255,255,0)}
+  55%{transform:scale(1) rotate(0);box-shadow:0 0 38px 8px rgba(255,255,255,.10)}
+  100%{opacity:1;transform:scale(1);box-shadow:0 0 0 0 rgba(255,255,255,0)}
+}
+@keyframes brandSplashOrbit{0%{opacity:0;transform:rotate(0) scale(.55)}25%{opacity:1}100%{opacity:.15;transform:rotate(360deg) scale(1.12)}}
+@keyframes brandSplashName{0%{opacity:0;transform:translateY(8px)}100%{opacity:.9;transform:translateY(0)}}
+@keyframes brandSplashLine{0%{width:0;opacity:0}100%{width:92px;opacity:.8}}
+@keyframes brandSplashOut{0%{opacity:1;visibility:visible}100%{opacity:0;visibility:hidden;pointer-events:none}}
+@keyframes sectionMotion{
+  0%{opacity:0;transform:translateY(8px) scale(.995)}
+  100%{opacity:1;transform:translateY(0) scale(1)}
+}
+@keyframes miniBrandPop{
+  0%{opacity:0;transform:translate(-50%,-50%) scale(.55);filter:blur(4px)}
+  35%{opacity:1;transform:translate(-50%,-50%) scale(1)}
+  100%{opacity:0;transform:translate(-50%,-50%) scale(1.08);filter:blur(0)}
+}
+.brand-splash{
+  position:fixed;inset:0;z-index:10000;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  background:radial-gradient(circle at 50% 42%,#51479d 0%,#342d73 28%,#211d4d 68%,#15152a 100%);
+  color:#fff;overflow:hidden;animation:brandSplashOut .55s 2.15s cubic-bezier(.4,0,.2,1) forwards;
+}
+.brand-splash-orbit{
+  position:absolute;width:210px;height:210px;border:1px solid rgba(255,255,255,.14);border-radius:50%;
+  box-shadow:0 0 80px rgba(126,115,226,.20);animation:brandSplashOrbit 2.1s cubic-bezier(.2,.7,.2,1) both;
+}
+.brand-splash-orbit:after{
+  content:"";position:absolute;inset:20px;border:1px solid rgba(255,255,255,.08);border-radius:50%;
+}
+.brand-splash-logo-wrap{
+  position:relative;width:88px;height:88px;border-radius:24px;display:grid;place-items:center;
+  background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.14);
+  backdrop-filter:blur(12px);animation:brandSplashLogo 1.35s .12s cubic-bezier(.16,1,.3,1) both;
+}
+.brand-splash-logo{width:62px;height:62px;object-fit:contain}
+.brand-splash-name{margin-top:22px;font-size:16px;font-weight:800;letter-spacing:.1px;animation:brandSplashName .65s .62s cubic-bezier(.16,1,.3,1) both}
+.brand-splash-line{height:2px;width:0;margin-top:14px;background:rgba(255,255,255,.55);border-radius:9px;animation:brandSplashLine .65s .78s cubic-bezier(.16,1,.3,1) both}
+.brand-splash-line span{display:block;height:100%;background:#fff;border-radius:9px;animation:brandSplashLine .65s .78s cubic-bezier(.16,1,.3,1) both}
+.brand-section-mark{
+  position:fixed;left:50%;top:50%;width:58px;height:58px;padding:13px;z-index:9998;
+  border-radius:18px;background:rgba(52,45,115,.92);box-shadow:0 12px 38px rgba(30,25,80,.22);
+  transform:translate(-50%,-50%);pointer-events:none;animation:miniBrandPop .72s cubic-bezier(.16,1,.3,1) both;
+}
+.brand-section-mark img{width:100%;height:100%;object-fit:contain}
+.section-motion{animation:sectionMotion .42s cubic-bezier(.16,1,.3,1) both}
+@media(max-width:900px){
+  .app-header{
+    top:12px!important;margin-top:12px!important;
+    padding-top:calc(9px + env(safe-area-inset-top))!important;
+    border-radius:18px!important;
+    width:calc(100% - 16px)!important;margin-inline:auto!important;
+  }
+}
+@media(max-width:480px){
+  .app-header{top:12px!important;margin-top:12px!important;padding-top:calc(8px + env(safe-area-inset-top))!important}
+}
+@media(prefers-reduced-motion:reduce){
+  .brand-splash,.brand-splash-logo,.brand-splash-orbit,.brand-splash-name,.brand-splash-line,.brand-section-mark,.section-motion{animation:none!important}
+  .brand-splash{display:none!important}
+}
