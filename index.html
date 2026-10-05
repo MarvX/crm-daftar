@@ -909,6 +909,30 @@ body.dark .studio-logo-dark{display:block!important}
     max-width:30px!important;max-height:30px!important;
   }
 }
+/* ===== PWA install card ===== */
+.profile-install-card{
+  position:relative;
+  overflow:hidden;
+}
+.profile-install-card::before{
+  content:"";
+  position:absolute;inset:auto auto -26px -22px;width:100px;height:100px;
+  border-radius:50%;
+  background:rgba(91,81,177,.08);
+  pointer-events:none;
+}
+.profile-install-card .profile-setting-head,
+.profile-install-card .btn{position:relative;z-index:1}
+.profile-install-card .btn{
+  min-width:112px;
+}
+.profile-install-card .btn:disabled{
+  opacity:.78;
+  cursor:default;
+}
+@media(max-width:700px){
+  .profile-install-card .profile-setting-head{align-items:flex-start}
+}
 </style>
 </head>
 <body>
