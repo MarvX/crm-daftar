@@ -1,12 +1,15 @@
 name: Build Dast Studio Android App
 
 on:
+  workflow_dispatch:
   push:
     branches: [ "main", "android-app" ]
     paths:
       - "android/**"
       - ".github/workflows/build-android.yml"
-  workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   build:
@@ -32,15 +35,44 @@ jobs:
         with:
           gradle-version: "9.4.1"
 
-      - name: Build debug APK
-        working-directory: android
-        run: gradle :app:assembleDebug --stacktrace
+      - name: Create temporary release keystore
+        env:
+          KEYSTORE_PASSWORD: ${{ secrets.DAST_ANDROID_KEYSTORE_PASSWORD }}
+        run: |
+          if [ -z "$KEYSTORE_PASSWORD" ]; then
+            KEYSTORE_PASSWORD="$(openssl rand -hex 24)"
+          fi
+          keytool -genkeypair -v             -keystore "$RUNNER_TEMP/daststudio-release.jks"             -storepass "$KEYSTORE_PASSWORD"             -keypass "$KEYSTORE_PASSWORD"             -alias daststudio             -keyalg RSA             -keysize 2048             -validity 10000             -dname "CN=Dast Studio, OU=Mobile, O=Dast Studio, L=Tehran, ST=Tehran, C=IR"
+          echo "ANDROID_KEYSTORE_PATH=$RUNNER_TEMP/daststudio-release.jks" >> "$GITHUB_ENV"
+          echo "ANDROID_KEYSTORE_PASSWORD=$KEYSTORE_PASSWORD" >> "$GITHUB_ENV"
+          echo "ANDROID_KEY_ALIAS=daststudio" >> "$GITHUB_ENV"
+          echo "ANDROID_KEY_PASSWORD=$KEYSTORE_PASSWORD" >> "$GITHUB_ENV"
 
-      - name: Upload APK
+      - name: Build signed release APK
+        working-directory: android
+        run: gradle :app:assembleRelease --stacktrace
+
+      - name: Verify APK
+        run: |
+          ls -lh android/app/build/outputs/apk/release/app-release.apk
+          sha256sum android/app/build/outputs/apk/release/app-release.apk
+
+      - name: Upload release artifact
         uses: actions/upload-artifact@v7
         with:
-          name: daststudio-android-debug
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          name: daststudio-android-release
+          path: android/app/build/outputs/apk/release/app-release.apk
           if-no-files-found: error
           retention-days: 30
           archive: false
+
+      - name: Publish test release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: android-test-v1
+          name: Dast Studio Android v1.0.0
+          body: |
+            نسخه تستی APK استودیو معماری دَست.
+            این نسخه برای نصب مستقیم روی اندروید ساخته شده است.
+          files: android/app/build/outputs/apk/release/app-release.apk
+          make_latest: false
