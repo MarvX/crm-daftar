@@ -753,8 +753,18 @@ async function enableNotifications() {
 
 // نصب اپ روی گوشی
 let deferredInstall = null;
-window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); deferredInstall = e; updateInstallBtn(); });
-window.addEventListener('appinstalled', () => { deferredInstall = null; updateInstallBtn(); });
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredInstall = e;
+  updateInstallBtn();
+  updateProfileSettingsUI();
+});
+window.addEventListener('appinstalled', () => {
+  deferredInstall = null;
+  updateInstallBtn();
+  updateProfileSettingsUI();
+  showToast('اپ استودیو معماری دَست نصب شد ✅');
+});
 function updateInstallBtn() {
   const btn = document.getElementById('install-btn'); if (!btn) return;
   btn.classList.toggle('hidden', isStandalone() || !currentUser);
@@ -957,9 +967,28 @@ function renderProfile() {
         <div class="profile-setting-head"><span class="profile-setting-icon">📅</span><div><strong>تقویم گوگل</strong><div id="profile-calendar-status" class="sr-meta">از هدر هم قابل مدیریت است</div></div></div>
         <button class="btn small secondary" onclick="connectCalendar()">اتصال تقویم</button>
       </div>
+      <div class="card profile-install-card">
+        <div class="profile-setting-head"><span class="profile-setting-icon">📲</span><div><strong>اپ استودیو معماری دَست</strong><div id="profile-install-status" class="sr-meta">اپ را روی این دستگاه نصب کن.</div></div></div>
+        <button id="profile-install-btn" class="btn small" onclick="installApp()">📲 نصب اپ</button>
+      </div>
     </div>`;
 }
 function updateProfileSettingsUI() {
+  const install = document.getElementById('profile-install-status');
+  const installBtn = document.getElementById('profile-install-btn');
+  if (install && installBtn) {
+    const installed = isStandalone();
+    if (installed) {
+      install.textContent = 'اپ روی این دستگاه نصب شده است ✅';
+      installBtn.textContent = '✅ نصب شده';
+      installBtn.disabled = true;
+    } else {
+      install.textContent = isIOS() ? 'برای نصب روی آیفون، از Safari و Add to Home Screen استفاده کن.' : 'با این دکمه اپ را به صفحه اصلی دستگاه اضافه کن.';
+      installBtn.textContent = deferredInstall ? '📲 نصب اپ' : '📲 نصب / راهنمای نصب';
+      installBtn.disabled = false;
+    }
+  }
+
   const notif = document.getElementById('profile-notification-status');
   if (notif) {
     const supported = pushSupported();
