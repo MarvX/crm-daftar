@@ -622,7 +622,10 @@ function toggleNavGroup(groupId) {
 function setSidebarOpen(open) {
   document.body.classList.toggle('sidebar-open', !!open);
   const backdrop = document.getElementById('sidebar-backdrop');
-  if (backdrop) backdrop.classList.toggle('hidden', !open);
+  if (backdrop) {
+    backdrop.setAttribute('aria-hidden', open ? 'false' : 'true');
+    backdrop.classList.toggle('hidden', !open);
+  }
 }
 
 function toggleSidebar() {
