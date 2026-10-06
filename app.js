@@ -1168,9 +1168,22 @@ function renderEmployees() {
   return `
     <div class="row-top"><div><h2>کارکنان</h2><div class="profile-subtitle">فهرست اعضای دفتر برای دسترسی سریع به تیم</div></div><button class="btn small secondary" onclick="switchSection('profile')">پروفایل من</button></div>
     <div class="card">
-      <div class="row-top"><div><h3 style="margin:0;">اعضای دفتر</h3><div class="sr-meta">اطلاعاتی که اعضای تیم برای شناخت همدیگر ثبت کرده‌اند.</div></div><input id="employee-search" oninput="filterEmployeeDirectory(this.value)" placeholder="جست‌وجوی نام یا واحد" style="max-width:280px;"></div>
+      <div class="row-top"><div><h3 style="margin:0;">اعضای دفتر</h3><div class="sr-meta">${currentProfile?.is_admin ? 'از همین بخش می‌توانی سمت هر کارمند را سریع تغییر بدهی.' : 'اطلاعاتی که اعضای تیم برای شناخت همدیگر ثبت کرده‌اند.'}</div></div><input id="employee-search" oninput="filterEmployeeDirectory(this.value)" placeholder="جست‌وجوی نام یا واحد" style="max-width:280px;"></div>
       <div id="employee-directory-grid" class="employee-directory-grid"><div class="empty">در حال بارگذاری کارکنان...</div></div>
     </div>`;
+}
+async function updateEmployeeRole(userId, userName) {
+  if (!currentProfile?.is_admin || !userId) return;
+  const input = document.getElementById('employee-role-' + userId);
+  if (!input) return;
+  const role_title = String(input.value || '').trim().slice(0, 80);
+  if (!role_title) { alert('سمت را وارد کن.'); input.focus(); return; }
+  const { data, error } = await sb.from('profiles').update({ role_title }).eq('id', userId).select('*').single();
+  if (error) { alert('تغییر سمت انجام نشد: ' + error.message); return; }
+  employeeDirectory = employeeDirectory.map(p => p.id === userId ? { ...p, role_title: data?.role_title || role_title } : p);
+  allProfiles = allProfiles.map(p => p.id === userId ? { ...p, role_title: data?.role_title || role_title } : p);
+  renderEmployeeDirectory(employeeDirectory);
+  showToast('سمت ' + (userName || 'کارمند') + ' با موفقیت تغییر کرد ✅');
 }
 let employeeDirectory=[];
 async function loadEmployeeDirectory() {
@@ -1191,6 +1204,14 @@ function renderEmployeeDirectory(rows) {
       <div class="employee-card-head">${profileAvatarMarkup(p,'lg')}<div><strong>${escapeHtml(p.full_name||'عضو تیم')}</strong><div class="profile-role">${escapeHtml(p.role_title||'عضو تیم')}</div></div></div>
       <div class="employee-meta-row"><span>🏢</span><span>${escapeHtml(p.department||'واحد ثبت نشده')}</span></div>
       ${p.bio?`<p class="employee-bio">${escapeHtml(p.bio)}</p>`:''}
+      ${currentProfile?.is_admin ? `
+        <div class="employee-admin-role">
+          <label for="employee-role-${p.id}">سمت کارمند</label>
+          <div class="employee-admin-role-row">
+            <input id="employee-role-${p.id}" value="${escapeHtml(p.role_title||'')}" maxlength="80" placeholder="مثلاً معمار، کارآموز، مدیر پروژه">
+            <button class="btn small" type="button" onclick="updateEmployeeRole('${p.id}','${escapeHtml(p.full_name||'کارمند')}')">ذخیره</button>
+          </div>
+        </div>` : ''}
     </article>`).join('') : '<div class="empty">عضوی مطابق جست‌وجوی تو پیدا نشد.</div>';
 }
 
@@ -1574,7 +1595,7 @@ function updateDashboardAttendanceQuickAction() {
   const icon = btn.querySelector('.qa-icon');
   const active = !!activeCheckIn;
   if (strong) strong.textContent = active ? 'ثبت خروج' : 'ثبت ورود';
-  if (meta) meta.textContent = active ? ('در حال حضور · ' + getAttendanceElapsedLabel(new Date(activeCheckIn.check_in))) : 'ثبت حضور امروز';
+  if (meta) meta.textContent = active ? ('ورود ثبت شد · ' + attendanceTime(activeCheckIn.check_in)) : 'ثبت حضور امروز';
   if (icon) icon.textContent = active ? '⏱️' : '🕘';
   btn.classList.toggle('dashboard-attendance-active', active);
 }
@@ -1598,7 +1619,7 @@ async function loadAttendanceStatus() {
   if (data && data[0]) {
     activeCheckIn = data[0];
     if (btn) { btn.innerText = 'ثبت خروج'; btn.classList.add('is-active'); }
-    if (chip) chip.innerText = 'وضعیت: در حال حضور';
+    if (chip) chip.innerText = 'ورود ثبت شد · ' + attendanceTime(activeCheckIn.check_in);
     startCounter(new Date(activeCheckIn.check_in));
   } else {
     activeCheckIn = null;
@@ -2022,6 +2043,12 @@ function dashboardGreeting(context = '') {
   const firstName = String(currentProfile?.full_name || currentUser?.email || 'دوست عزیز').trim().split(' ')[0] || 'دوست عزیز';
   const name = escapeHtml(firstName);
   const role = currentProfile?.role_title || (currentProfile?.is_admin ? 'مدیر دفتر' : 'عضو تیم');
+  const now = new Date();
+  let todayLabel = '';
+  try {
+    const j = JalaaliLib.toJalaali(now.getFullYear(), now.getMonth() + 1, now.getDate());
+    todayLabel = `${toFaDigits(j.jd)} ${JALALI_MONTHS[j.jm - 1]} ${toFaDigits(j.jy)}`;
+  } catch (_) {}
   return `
     <section class="dashboard-greeting">
       <div class="dashboard-greeting-art" aria-hidden="true">
@@ -2032,6 +2059,7 @@ function dashboardGreeting(context = '') {
       </div>
       <div class="dashboard-greeting-copy">
         <div class="dashboard-greeting-kicker">صبح بخیر، ${name} <span>🌤️</span></div>
+        <div class="dashboard-today-badge">📅 امروز · ${todayLabel}</div>
         <h2>خوش اومدی به استودیو معماری دَست</h2>
         <p>${context} <span class="greeting-inline-emoji">🚀</span></p>
       </div>
