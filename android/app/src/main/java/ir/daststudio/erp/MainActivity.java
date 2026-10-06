@@ -9,13 +9,9 @@ import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.graphics.drawable.GradientDrawable;
 import android.net.Uri;
-import android.nfc.NdefMessage;
-import android.nfc.NdefRecord;
-import android.nfc.NfcAdapter;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
-import android.os.Parcelable;
 import android.webkit.CookieManager;
 import android.webkit.DownloadListener;
 import android.webkit.PermissionRequest;
@@ -36,7 +32,6 @@ import android.widget.Toast;
 
 import org.json.JSONTokener;
 
-import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Locale;
@@ -46,9 +41,10 @@ public class MainActivity extends android.app.Activity {
     private static final int FILE_CHOOSER_REQUEST = 4101;
     private static final int CAMERA_PERMISSION_REQUEST = 4102;
 
-    // مشخصات تگ NFC دفتر
-    private static final String NFC_MIME_TYPE = "application/vnd.daststudio.attendance";
-    private static final String NFC_TAG_PAYLOAD = "OFFICE_V1";
+    // Deep-link اختصاصی برای لمس تگ حضور دفتر
+    private static final String ATTENDANCE_SCHEME = "daststudio";
+    private static final String ATTENDANCE_HOST = "attendance";
+    private static final String ATTENDANCE_PATH = "/office";
 
     private WebView webView;
     private ValueCallback<Uri[]> filePathCallback;
@@ -118,7 +114,7 @@ public class MainActivity extends android.app.Activity {
 
         requestNotificationPermission();
 
-        if (isAttendanceNfcIntent(getIntent())) {
+        if (isAttendanceIntent(getIntent())) {
             nfcLaunchedActivity = true;
             pendingNfcAction = true;
             nfcAttempts = 0;
@@ -231,38 +227,17 @@ public class MainActivity extends android.app.Activity {
         }
     }
 
-    private boolean isAttendanceNfcIntent(Intent intent) {
-        if (intent == null) return false;
-
-        if (NfcAdapter.ACTION_NDEF_DISCOVERED.equals(intent.getAction())) {
-            String mime = intent.getType();
-            if (mime == null || !NFC_MIME_TYPE.equalsIgnoreCase(mime)) return false;
-            return hasValidNfcPayload(intent);
-        }
-
-        return false;
-    }
-
-    private boolean hasValidNfcPayload(Intent intent) {
-        Parcelable[] rawMessages = intent.getParcelableArrayExtra(NfcAdapter.EXTRA_NDEF_MESSAGES);
-        if (rawMessages == null) return true;
-
-        for (Parcelable raw : rawMessages) {
-            if (!(raw instanceof NdefMessage)) continue;
-            NdefMessage message = (NdefMessage) raw;
-            for (NdefRecord record : message.getRecords()) {
-                if (record.getTnf() != NdefRecord.TNF_MIME_MEDIA) continue;
-                String type = new String(record.getType(), StandardCharsets.US_ASCII);
-                if (!NFC_MIME_TYPE.equalsIgnoreCase(type)) continue;
-                String payload = new String(record.getPayload(), StandardCharsets.UTF_8).trim();
-                return NFC_TAG_PAYLOAD.equals(payload);
-            }
-        }
-        return false;
+    private boolean isAttendanceIntent(Intent intent) {
+        if (intent == null || !Intent.ACTION_VIEW.equals(intent.getAction())) return false;
+        Uri data = intent.getData();
+        if (data == null) return false;
+        return ATTENDANCE_SCHEME.equalsIgnoreCase(data.getScheme())
+                && ATTENDANCE_HOST.equalsIgnoreCase(data.getHost())
+                && ATTENDANCE_PATH.equals(data.getPath());
     }
 
     private void handleNfcIntent(Intent intent, boolean fromColdStart) {
-        if (!isAttendanceNfcIntent(intent)) return;
+        if (!isAttendanceIntent(intent)) return;
 
         nfcLaunchedActivity = fromColdStart;
         pendingNfcAction = true;
