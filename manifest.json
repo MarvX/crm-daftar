@@ -5,15 +5,21 @@
   "description": "اپ مدیریت یکپارچه استودیو معماری دَست: کارها، تقویم، حضور و مدیریت دفتر",
   "lang": "fa",
   "dir": "rtl",
-  "start_url": "/?section=dashboard",
-  "scope": "/",
-  "display_override": ["standalone", "minimal-ui"],
+  "start_url": "https://daststudio.vercel.app/?section=dashboard",
+  "scope": "https://daststudio.vercel.app/",
+  "display_override": [
+    "standalone",
+    "minimal-ui"
+  ],
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#ececf1",
   "theme_color": "#342D73",
   "prefer_related_applications": false,
-  "categories": ["business", "productivity"],
+  "categories": [
+    "business",
+    "productivity"
+  ],
   "icons": [
     {
       "src": "/assets/logo_blue.svg",
