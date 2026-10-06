@@ -647,10 +647,106 @@ function updateHeaderContext(id = activeSectionId) {
       const dateLabel = `${toFaDigits(j.jd)} ${JALALI_MONTHS[j.jm - 1]} ${toFaDigits(j.jy)}`;
       date.textContent = dateLabel;
       if (contentDate) contentDate.textContent = dateLabel;
+      const mobileDate = document.getElementById('header-mobile-date');
+      if (mobileDate) mobileDate.textContent = dateLabel;
     } catch (_) {
       date.textContent = '';
       if (contentDate) contentDate.textContent = '';
+      const mobileDate = document.getElementById('header-mobile-date');
+      if (mobileDate) mobileDate.textContent = '';
     }
+  }
+}
+
+function openSettingsCenter() {
+  const root = document.getElementById('edit-modal-root');
+  if (!root) return;
+  const isDark = document.body.classList.contains('dark');
+  const standalone = isStandalone();
+  const ios = isIOS();
+  const notifSupported = pushSupported();
+  const notifGranted = notifSupported && 'Notification' in window && Notification.permission === 'granted';
+  const calendarConnected = !!googleStatus?.me?.connected && !googleStatus?.me?.needs_reconnect;
+  const calendarNeedsReconnect = !!googleStatus?.me?.needs_reconnect;
+
+  root.innerHTML = `
+    <div class="overlay settings-overlay" onclick="if(event.target===this)this.remove()">
+      <div class="modal settings-modal" role="dialog" aria-modal="true" aria-labelledby="settings-modal-title">
+        <div class="settings-modal-head">
+          <div>
+            <div class="settings-kicker">استودیو معماری دَست</div>
+            <h3 id="settings-modal-title">⚙️ تنظیمات</h3>
+            <p>تنظیمات این دستگاه، ظاهر پنل و حساب کاربری</p>
+          </div>
+          <button class="header-icon-btn settings-close" type="button" onclick="this.closest('.overlay').remove()" aria-label="بستن">×</button>
+        </div>
+
+        <div class="settings-date-card">
+          <span>📅 امروز</span>
+          <strong id="settings-current-date">—</strong>
+        </div>
+
+        <div class="settings-list">
+          <button type="button" class="settings-row" onclick="toggleDarkMode();openSettingsCenter()">
+            <span class="settings-row-icon">${isDark ? '☀️' : '🌙'}</span>
+            <span class="settings-row-copy"><strong>ظاهر پنل</strong><small>${isDark ? 'حالت تیره فعال است؛ برای روشن شدن بزن' : 'حالت روشن فعال است؛ برای تیره شدن بزن'}</small></span>
+            <span class="settings-row-action">${isDark ? 'روشن' : 'تیره'}</span>
+          </button>
+
+          <button type="button" class="settings-row" onclick="enableNotifications();setTimeout(openSettingsCenter,500)">
+            <span class="settings-row-icon">🔔</span>
+            <span class="settings-row-copy"><strong>اعلان‌ها</strong><small>${notifGranted ? 'اعلان‌های این دستگاه فعال است' : notifSupported ? 'اعلان هنوز فعال نشده' : 'این مرورگر اعلان وب را پشتیبانی نمی‌کند'}</small></span>
+            <span class="settings-row-action">${notifGranted ? 'فعال ✓' : 'فعال‌سازی'}</span>
+          </button>
+
+          <button type="button" class="settings-row" onclick="installApp();setTimeout(openSettingsCenter,500)">
+            <span class="settings-row-icon">📲</span>
+            <span class="settings-row-copy"><strong>نصب اپ روی گوشی</strong><small>${standalone ? 'اپ روی این دستگاه نصب شده است' : ios ? 'راهنمای نصب روی آیفون' : 'نصب PWA روی صفحه اصلی'}</small></span>
+            <span class="settings-row-action">${standalone ? 'نصب شده ✓' : 'نصب'}</span>
+          </button>
+
+          <button type="button" class="settings-row" onclick="connectCalendar();setTimeout(openSettingsCenter,700)">
+            <span class="settings-row-icon">📅</span>
+            <span class="settings-row-copy"><strong>تقویم گوگل</strong><small>${calendarNeedsReconnect ? 'اتصال نیاز به بازسازی دارد' : calendarConnected ? 'تقویم متصل است' : 'تقویم هنوز متصل نیست'}</small></span>
+            <span class="settings-row-action">${calendarConnected ? 'متصل ✓' : 'اتصال'}</span>
+          </button>
+
+          <button type="button" class="settings-row" onclick="changeMyPassword()">
+            <span class="settings-row-icon">🔐</span>
+            <span class="settings-row-copy"><strong>امنیت حساب</strong><small>رمز ورود را تغییر بده</small></span>
+            <span class="settings-row-action">تغییر</span>
+          </button>
+
+          <button type="button" class="settings-row" onclick="this.closest('.overlay').remove();switchSection('profile')">
+            <span class="settings-row-icon">👤</span>
+            <span class="settings-row-copy"><strong>پروفایل من</strong><small>نام، دپارتمان، سمت و آواتار</small></span>
+            <span class="settings-row-action">باز کردن</span>
+          </button>
+
+          <button type="button" class="settings-row" onclick="this.closest('.overlay').remove();switchSection('attendance')">
+            <span class="settings-row-icon">⏱️</span>
+            <span class="settings-row-copy"><strong>حضور و غیاب</strong><small>ثبت ورود و خروج و مشاهده سابقه</small></span>
+            <span class="settings-row-action">مشاهده</span>
+          </button>
+        </div>
+
+        <div class="settings-reminder">
+          <span>⏰ یادآورها</span>
+          <small>ورود ساعت ۰۹:۰۰ و خروج ساعت ۱۷:۰۰ در صورت فعال بودن اعلان روی این دستگاه ارسال می‌شود.</small>
+        </div>
+
+        <button type="button" class="settings-logout" onclick="this.closest('.overlay').remove();doLogout()">
+          <span>↪</span><strong>خروج از حساب</strong>
+        </button>
+      </div>
+    </div>`;
+  const date = document.getElementById('settings-current-date');
+  if (date) {
+    const now = new Date();
+    try {
+      const j = JalaaliLib.toJalaali(now.getFullYear(), now.getMonth() + 1, now.getDate());
+      date.textContent = `${toFaDigits(j.jd)} ${JALALI_MONTHS[j.jm - 1]} ${toFaDigits(j.jy)}`;
+    } catch (_) {}
   }
 }
 
