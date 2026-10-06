@@ -13,7 +13,7 @@ android {
         versionCode = 1
         versionName = "1.0.0"
 
-                buildConfigField("String", "APP_URL", "\"https://crm-daftar.vercel.app/\"")
+                buildConfigField("String", "APP_URL", "\"https://daststudio.vercel.app/\"")
     }
 
     buildFeatures {
