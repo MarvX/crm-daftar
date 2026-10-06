@@ -284,11 +284,6 @@ public class MainActivity extends android.app.Activity {
             Object parsed = new JSONTokener(value).nextValue();
             return parsed == null ? "" : String.valueOf(parsed);
         } catch (Exception ignored) {
-            if (value.length() >= 2 && value.startsWith(""") && value.endsWith(""")) {
-                return value.substring(1, value.length() - 1)
-                        .replace("\"", """)
-                        .replace("\\\\", "\");
-            }
             return value;
         }
     }
