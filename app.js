@@ -722,6 +722,10 @@ async function loadProfileAndShowApp() {
   const mobileAllowed = ['dashboard','tasks','calendar','attendance','profile','projects','pipeline','clients','contracts','team','employees','costs','tenders','office-tasks','erp-tasks'];
   if (mobileSection && mobileAllowed.includes(mobileSection)) setTimeout(() => switchSection(mobileSection), 0);
   loadAttendanceStatus();
+  const nfcMode = new URLSearchParams(location.search).get('nfc');
+  if (nfcMode === 'office') {
+    setTimeout(() => window.dastWebNfcAttendance?.(), 450);
+  }
   loadMyTasks();
   refreshGoogleStatus();
   startTaskNotifications();
