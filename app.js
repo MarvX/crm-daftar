@@ -1529,31 +1529,66 @@ function startCounter(startTime) {
   attendanceTimer = setInterval(tick, 1000);
 }
 
-async function toggleAttendance() {
-  if (toggleAttendance.busy) return;
+async function performAttendanceToggle({ silent = false } = {}) {
+  if (performAttendanceToggle.busy) return { ok: false, status: 'busy' };
   if (!attendanceReady) await loadAttendanceStatus();
-  if (!attendanceReady) return;
+  if (!attendanceReady) return { ok: false, status: 'not_ready' };
+
   const buttons = [document.getElementById('attendance-btn'), document.getElementById('dashboard-attendance-btn')].filter(Boolean);
-  toggleAttendance.busy = true;
+  const wasCheckedIn = !!activeCheckIn;
+  performAttendanceToggle.busy = true;
   buttons.forEach(b => { b.disabled = true; b.style.opacity = '.7'; });
 
   try {
     let error = null;
     const now = new Date().toISOString();
-    if (activeCheckIn) {
-      ({ error } = await sb.from('attendance').update({ check_out: now }).eq('id', activeCheckIn.id).eq('user_id', currentUser.id));
+
+    if (wasCheckedIn) {
+      ({ error } = await sb.from('attendance')
+        .update({ check_out: now })
+        .eq('id', activeCheckIn.id)
+        .eq('user_id', currentUser.id));
     } else {
-      ({ error } = await sb.from('attendance').insert([{ user_id: currentUser.id, check_in: now }]));
+      ({ error } = await sb.from('attendance')
+        .insert([{ user_id: currentUser.id, check_in: now }]));
     }
-    if (error) { showToast('ثبت حضور و غیاب انجام نشد.'); return; }
-    showToast(activeCheckIn ? 'خروج با موفقیت ثبت شد ✅' : 'ورود با موفقیت ثبت شد ✅');
+
+    if (error) {
+      if (!silent) showToast('ثبت حضور و غیاب انجام نشد.');
+      return { ok: false, status: 'error' };
+    }
+
+    const status = wasCheckedIn ? 'checked_out' : 'checked_in';
+    if (!silent) showToast(wasCheckedIn ? 'خروج با موفقیت ثبت شد ✅' : 'ورود با موفقیت ثبت شد ✅');
+
     await loadAttendanceStatus();
     if (currentProfile?.is_admin && document.getElementById('attendance-all-days')) await loadAttendanceAll();
+
+    return { ok: true, status, at: now };
   } finally {
-    toggleAttendance.busy = false;
+    performAttendanceToggle.busy = false;
     buttons.forEach(b => { b.disabled = false; b.style.opacity = ''; });
     updateDashboardAttendanceQuickAction();
   }
+}
+
+async function toggleAttendance() {
+  return performAttendanceToggle({ silent: false });
+}
+
+// این هوک فقط برای اپ اندروید است؛ بدون نمایش UI سایت، همان رکورد حضور و غیاب عادی را ثبت می‌کند.
+window.dastNfcAttendance = async function() {
+  if (!currentUser) {
+    try {
+      const { data } = await sb.auth.getSession();
+      if (data?.session) {
+        currentUser = data.session.user;
+        sessionToken = data.session.access_token;
+      }
+    } catch (e) {}
+  }
+  if (!currentUser) return { ok: false, status: 'not_logged_in' };
+  return performAttendanceToggle({ silent: true });
 }
 
 function formatDuration(inTime, outTime) {
