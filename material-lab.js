@@ -351,7 +351,7 @@
         ((s.phone||s.mobile)?'<a class="btn small" href="tel:'+esc(phone(s.phone||s.mobile))+'">تماس</a>':'')+
         (s.whatsapp?'<a class="btn small secondary" target="_blank" rel="noopener" href="'+esc(wa(s.whatsapp))+'">واتساپ</a>':'')+
         (safeUrl(s.website)?'<a class="btn small secondary" target="_blank" rel="noopener" href="'+esc(safeUrl(s.website))+'">وب‌سایت</a>':'')+
-        (s.instagram?'<a class="btn small secondary" target="_blank" rel="noopener" href="'+esc(safeUrl(s.instagram) || s.instagram)+'">اینستاگرام</a>':'')+
+        (s.instagram&&safeUrl(s.instagram)?'<a class="btn small secondary" target="_blank" rel="noopener" href="'+esc(safeUrl(s.instagram))+'">اینستاگرام</a>':'')+
         '<button class="btn small secondary" onclick="MaterialLab.filterSupplier(\''+s.id+'\')">متریال‌ها</button>'+
         (isAdmin()?'<button class="btn small secondary" onclick="MaterialLab.openSupplier(\''+s.id+'\')">ویرایش</button><button class="btn small danger" onclick="MaterialLab.deleteSupplier(\''+s.id+'\')">حذف</button>':'')+
       '</div>'+
@@ -742,7 +742,7 @@
     var c = ML.catalogs.find(function(x){ return x.id === id; });
     if (!c) return;
     var fs = ML.files.filter(function(f){ return f.catalog_id === id; });
-    var ms = ML.materials.filter(function(m){ return m.supplier_id === c.supplier_id && (!c.category || String(m.category_id||'') || String(m.subcategory||'').indexOf(c.category)>=0); }).slice(0,8);
+    var ms = ML.materials.filter(function(m){ return c.supplier_id && m.supplier_id === c.supplier_id; }).slice(0,8);
     var body = '<div class="ml-detail-hero"><div class="ml-catalog-cover big">'+(safeUrl(c.cover_url)?'<img src="'+esc(safeUrl(c.cover_url))+'" alt="">':'📚')+'</div><div><span class="ml-kicker">'+esc(c.catalog_kind||'کاتالوگ')+'</span><h3>'+esc(c.title)+'</h3><p>'+esc([supplierName(c.supplier_id),c.publisher,c.year].filter(Boolean).join(' · '))+'</p><span class="ml-extract-status">'+esc(c.extraction_status||'ثبت نشده')+'</span></div></div>'+
       (c.physical_location?'<div class="ml-detail-box">📦 محل نسخه فیزیکی: <strong>'+esc(c.physical_location)+'</strong></div>':'')+
       (c.description?'<div class="ml-detail-box">'+esc(c.description)+'</div>':'')+
@@ -899,6 +899,15 @@
     var r = await sb.from('material_board_items').delete().eq('id',id);
     if (r.error) return toast(r.error.message);
     await load(); refreshDom();
+  }
+
+  async function deleteBoard(id){
+    if(!isAdmin() || !confirm('این برد و آیتم‌های داخل آن حذف شوند؟')) return;
+    var ri=await sb.from('material_board_items').delete().eq('board_id',id);
+    if(ri.error) return toast('آیتم‌های برد حذف نشدند: '+ri.error.message);
+    var rb=await sb.from('material_boards').delete().eq('id',id);
+    if(rb.error) return toast('برد حذف نشد: '+rb.error.message);
+    ML.boardId=''; await load(); ML.view='boards'; refreshDom();
   }
 
   async function favorite(id){
@@ -1117,6 +1126,7 @@
     editItem:editItem,
     saveItem:saveItem,
     removeItem:removeItem,
+    deleteBoard:deleteBoard,
     favorite:favorite,
     toggleCompare:toggleCompare,
     clearCompare:clearCompare,
