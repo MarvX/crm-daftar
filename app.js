@@ -581,6 +581,7 @@ const NAV_ITEMS = [
   { id: 'attendance', label: 'ورود و خروج', icon: '◷', group: 'main' },
   { id: 'tasks', label: 'کارها', icon: '✓', group: 'workspace' },
   { id: 'calendar', label: 'تقویم', icon: '□', group: 'workspace' },
+  { id: 'material-lab', label: 'Material Lab', icon: '▦', group: 'main' },
   { id: 'pipeline', label: 'سرنخ‌ها', icon: '◇', group: 'crm', adminOnly: true },
   { id: 'clients', label: 'کارفرمایان', icon: '♙', group: 'crm', adminOnly: true },
   { id: 'projects', label: 'پروژه‌ها', icon: '⌂', group: 'crm', adminOnly: true },
