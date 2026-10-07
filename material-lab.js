@@ -1,13 +1,9 @@
 
 /* DAST MATERIAL LAB — modular front-end */
 (function(){
-  if (Array.isArray(NAV_GROUPS) && !NAV_GROUPS.some(function(g){return g.id==='design';})) {
-    var wi = NAV_GROUPS.findIndex(function(g){return g.id==='workspace';});
-    NAV_GROUPS.splice(wi >= 0 ? wi+1 : NAV_GROUPS.length, 0, {id:'design',label:'طراحی و منابع'});
-  }
-  if (Array.isArray(NAV_ITEMS) && !NAV_ITEMS.some(function(i){return i.id==='material-lab';})) {
+    if (Array.isArray(NAV_ITEMS) && !NAV_ITEMS.some(function(i){return i.id==='material-lab';})) {
     var ci = NAV_ITEMS.findIndex(function(i){return i.id==='calendar';});
-    NAV_ITEMS.splice(ci >= 0 ? ci+1 : NAV_ITEMS.length, 0, {id:'material-lab',label:'Material Lab',icon:'▦',group:'design'});
+    NAV_ITEMS.splice(ci >= 0 ? ci+1 : NAV_ITEMS.length, 0, {id:'material-lab',label:'Material Lab',icon:'▦',group:'main'});
   }
   if (typeof SECTION_TITLES !== 'undefined') SECTION_TITLES['material-lab']='Material Lab';
 
