@@ -829,7 +829,7 @@ function playBrandSectionMotion() {
 function notificationToggle(key, title, description) {
   const on = notificationPreferenceEnabled(key);
   const icon = key === 'task_new' ? '📋' : key === 'task_due' ? '📅' : key === 'attendance_check_in' ? '🕘' : '🕔';
-  return '<button type="button" class="notification-preference-row" onclick="setNotificationPreference(\\'' + key + '\\', ' + (!on) + ')">'
+  return '<button type="button" class="notification-preference-row" data-preference-key="' + key + '" data-preference-value="' + (!on) + '" onclick="setNotificationPreferenceFromElement(this)">';
     + '<span class="notification-preference-icon">' + icon + '</span>'
     + '<span class="notification-preference-copy"><strong>' + title + '</strong><small>' + description + '</small></span>'
     + '<span class="notification-switch ' + (on ? 'active' : '') + '" aria-hidden="true"><span></span></span>'
@@ -844,7 +844,7 @@ function renderNotificationSettings() {
     + '<div class="notification-settings-top"><button type="button" class="btn small secondary" onclick="openSettingsCenter()">← بازگشت به تنظیمات</button></div>'
     + '<div class="card notification-preferences-hero">'
     + '<div class="notification-preference-head"><span class="profile-setting-icon">🔔</span><div><strong>دریافت اعلان‌ها</strong><div class="sr-meta">اعلان‌های سیستم، یادآوری‌ها و هشدارهای مرتبط با حساب</div></div>'
-    + '<button type="button" class="notification-switch ' + (masterOn ? 'active' : '') + '" onclick="setNotificationPreference(\\'enabled\\', ' + (!masterOn) + ')" aria-label="' + (masterOn ? 'خاموش کردن اعلان‌ها' : 'روشن کردن اعلان‌ها') + '"><span></span></button></div>'
+    + '<button type="button" class="notification-switch ' + (masterOn ? 'active' : '') + '" data-preference-key="enabled" data-preference-value="' + (!masterOn) + '" onclick="setNotificationPreferenceFromElement(this)" aria-label="' + (masterOn ? 'خاموش کردن اعلان‌ها' : 'روشن کردن اعلان‌ها') + '"><span></span></button></div>'
     + '<div class="notification-device-status ' + (permission === 'granted' && masterOn ? 'ok' : '') + '">'
     + (!supported ? 'مرورگر فعلی اعلان وب را پشتیبانی نمی‌کند.' : permission === 'granted' && masterOn ? 'اعلان‌های این دستگاه فعال است.' : permission === 'denied' ? 'اجازه اعلان توسط مرورگر رد شده؛ از تنظیمات مرورگر فعالش کن.' : 'با روشن کردن کلید اصلی، اجازه اعلان دستگاه هم در صورت نیاز درخواست می‌شود.')
     + '</div></div>'
@@ -858,6 +858,13 @@ function renderNotificationSettings() {
     + '</div>'
     + '<div class="card notification-settings-note"><strong>نکته</strong><span>خاموش کردن کلید اصلی، اعلان‌های Push این دستگاه را هم غیرفعال می‌کند. تاریخچه اعلان‌ها در پنل باقی می‌ماند.</span></div>'
     + '</div>';
+}
+
+async function setNotificationPreferenceFromElement(el) {
+  const key = el?.dataset?.preferenceKey;
+  if (!key) return;
+  const value = String(el.dataset.preferenceValue) === 'true';
+  await setNotificationPreference(key, value);
 }
 
 async function setNotificationPreference(key, value) {
