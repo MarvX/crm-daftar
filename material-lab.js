@@ -1,11 +1,7 @@
 
 /* DAST MATERIAL LAB — modular front-end */
 (function(){
-    if (Array.isArray(NAV_ITEMS) && !NAV_ITEMS.some(function(i){return i.id==='material-lab';})) {
-    var ci = NAV_ITEMS.findIndex(function(i){return i.id==='calendar';});
-    NAV_ITEMS.splice(ci >= 0 ? ci+1 : NAV_ITEMS.length, 0, {id:'material-lab',label:'Material Lab',icon:'▦',group:'main'});
-  }
-  if (typeof SECTION_TITLES !== 'undefined') SECTION_TITLES['material-lab']='Material Lab';
+    if (typeof SECTION_TITLES !== 'undefined') SECTION_TITLES['material-lab']='Material Lab';
 
   var ML = {
     view:'materials', query:'', category:'', supplier:'', application:'', boardId:'',
