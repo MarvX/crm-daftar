@@ -154,7 +154,7 @@
   }
 
   function statCard(label,value,sub,action){
-    return '<button class="ml-stat-card" ' + (action ? 'onclick="MaterialLab.setView(\\''+action+'\\')"' : '') + '>' +
+    return '<button class="ml-stat-card" ' + (action ? 'onclick="MaterialLab.setView(\''+action+'\')"' : '') + '>' +
       '<span class="ml-stat-value">'+esc(value)+'</span><span class="ml-stat-label">'+esc(label)+'</span>' +
       (sub ? '<span class="ml-stat-sub">'+esc(sub)+'</span>' : '') +
       '</button>';
@@ -175,7 +175,7 @@
       ['categories','🗂','دسته‌بندی']
     ];
     return '<div class="ml-tabs">'+tabs.map(function(t){
-      return '<button class="ml-tab '+(ML.view===t[0]?'active':'')+'" onclick="MaterialLab.setView(\\''+t[0]+'\\')"><span>'+t[1]+'</span>'+t[2]+'</button>';
+      return '<button class="ml-tab '+(ML.view===t[0]?'active':'')+'" onclick="MaterialLab.setView(\''+t[0]+'\')"><span>'+t[1]+'</span>'+t[2]+'</button>';
     }).join('')+'</div>';
   }
 
@@ -240,16 +240,16 @@
       '</div>' +
     '</div>' +
     '<div class="ml-two-cols">' +
-      '<div class="card"><div class="ml-section-title"><h3>آخرین متریال‌ها</h3><button class="btn small secondary" onclick="MaterialLab.setView(\\'materials\\')">همه</button></div>' +
+      '<div class="card"><div class="ml-section-title"><h3>آخرین متریال‌ها</h3><button class="btn small secondary" onclick="MaterialLab.setView(\'materials\')">همه</button></div>' +
       (recent.length ? '<div class="ml-list">'+recent.map(miniMaterial).join('')+'</div>' : empty('هنوز متریالی ثبت نشده.')) + '</div>' +
-      '<div class="card"><div class="ml-section-title"><h3>آخرین قیمت‌ها</h3><button class="btn small secondary" onclick="MaterialLab.setView(\\'prices\\')">تاریخچه</button></div>' +
+      '<div class="card"><div class="ml-section-title"><h3>آخرین قیمت‌ها</h3><button class="btn small secondary" onclick="MaterialLab.setView(\'prices\')">تاریخچه</button></div>' +
       (priceRecent.length ? '<div class="ml-list">'+priceRecent.map(function(p){ var m=findMaterial(p.material_id); return '<div class="ml-list-row"><div><strong>'+esc(m?m.name_fa:'—')+'</strong><span>'+esc(dateLabel(p.recorded_at))+' · '+esc(supplierName(p.supplier_id || (m&&m.supplier_id)))+'</span></div><strong>'+money(p.price)+' '+esc(p.price_unit || (m&&m.price_unit) || '')+'</strong></div>'; }).join('') : empty('هنوز سابقه قیمتی ثبت نشده.')) + '</div>' +
     '</div>' +
-    (favoriteM.length ? '<div class="card"><div class="ml-section-title"><h3>علاقه‌مندی‌ها</h3><button class="btn small secondary" onclick="MaterialLab.setView(\\'favorites\\')">مشاهده</button></div><div class="ml-material-strip">'+favoriteM.map(card).join('')+'</div></div>' : '');
+    (favoriteM.length ? '<div class="card"><div class="ml-section-title"><h3>علاقه‌مندی‌ها</h3><button class="btn small secondary" onclick="MaterialLab.setView(\'favorites\')">مشاهده</button></div><div class="ml-material-strip">'+favoriteM.map(card).join('')+'</div></div>' : '');
   }
 
   function quick(icon,title,desc,view){
-    return '<button class="ml-quick" onclick="MaterialLab.setView(\\''+view+'\\')"><span class="ml-quick-icon">'+icon+'</span><span><strong>'+title+'</strong><small>'+desc+'</small></span><b>←</b></button>';
+    return '<button class="ml-quick" onclick="MaterialLab.setView(\''+view+'\')"><span class="ml-quick-icon">'+icon+'</span><span><strong>'+title+'</strong><small>'+desc+'</small></span><b>←</b></button>';
   }
 
   function empty(msg){ return '<div class="empty">'+esc(msg)+'</div>'; }
@@ -265,12 +265,12 @@
       '<div class="ml-filter-top"><div><strong>جست‌وجو و فیلتر</strong><small>هرچه اطلاعات بیشتری از کاتالوگ وارد کنیم، این قسمت کاربردی‌تر می‌شود.</small></div><button class="btn small secondary" onclick="MaterialLab.clearFilters()">پاک کردن فیلترها</button></div>' +
       '<div class="ml-filter-grid">' +
         '<input value="'+esc(ML.query)+'" oninput="MaterialLab.search(this.value)" placeholder="نام، برند، سازنده، کد، رنگ، فینیش...">' +
-        selectEl('ml-cat-filter','دسته',ML.categories.map(function(c){return [c.id,c.name_fa];}),ML.category,'MaterialLab.filter(\\'category\\',this.value)') +
-        selectEl('ml-sub-filter','زیر‌دسته',subs.map(function(x){return [x,x];}),ML.subcategory,'MaterialLab.filter(\\'subcategory\\',this.value)') +
-        selectEl('ml-sup-filter','شرکت',ML.suppliers.map(function(s){return [s.id,s.name];}),ML.supplier,'MaterialLab.filter(\\'supplier\\',this.value)') +
-        selectEl('ml-app-filter','کاربرد',[['نما','نما'],['داخلی','داخلی'],['هر دو','هر دو']],ML.application,'MaterialLab.filter(\\'application\\',this.value)') +
-        selectEl('ml-texture-filter','بافت',[['طبیعی','طبیعی'],['مات','مات'],['براق','براق'],['نیمه‌براق','نیمه‌براق'],['سه‌بعدی','سه‌بعدی']],ML.texture,'MaterialLab.filter(\\'texture\\',this.value)') +
-        selectEl('ml-stock-filter','موجودی',[['موجود','موجود'],['ناموجود','ناموجود'],['سفارشی','سفارشی']],ML.stock,'MaterialLab.filter(\\'stock\\',this.value)') +
+        selectEl('ml-cat-filter','دسته',ML.categories.map(function(c){return [c.id,c.name_fa];}),ML.category,'MaterialLab.filter(\'category\',this.value)') +
+        selectEl('ml-sub-filter','زیر‌دسته',subs.map(function(x){return [x,x];}),ML.subcategory,'MaterialLab.filter(\'subcategory\',this.value)') +
+        selectEl('ml-sup-filter','شرکت',ML.suppliers.map(function(s){return [s.id,s.name];}),ML.supplier,'MaterialLab.filter(\'supplier\',this.value)') +
+        selectEl('ml-app-filter','کاربرد',[['نما','نما'],['داخلی','داخلی'],['هر دو','هر دو']],ML.application,'MaterialLab.filter(\'application\',this.value)') +
+        selectEl('ml-texture-filter','بافت',[['طبیعی','طبیعی'],['مات','مات'],['براق','براق'],['نیمه‌براق','نیمه‌براق'],['سه‌بعدی','سه‌بعدی']],ML.texture,'MaterialLab.filter(\'texture\',this.value)') +
+        selectEl('ml-stock-filter','موجودی',[['موجود','موجود'],['ناموجود','ناموجود'],['سفارشی','سفارشی']],ML.stock,'MaterialLab.filter(\'stock\',this.value)') +
       '</div></div>';
   }
 
@@ -295,7 +295,7 @@
     });
 
     return '<div class="ml-view-head"><div><span class="ml-kicker">MATERIAL LIBRARY</span><h3>بانک متریال <small>'+num(list.length)+' نتیجه</small></h3></div>' +
-      '<div class="ml-head-actions"><button class="btn small secondary" onclick="MaterialLab.setView(\\'compare\\')">مقایسه ('+num(ML.compareIds.length)+')</button>' + (isAdmin() ? '<button class="btn small" onclick="MaterialLab.openMaterial()">＋ متریال</button>' : '') + '</div></div>' +
+      '<div class="ml-head-actions"><button class="btn small secondary" onclick="MaterialLab.setView(\'compare\')">مقایسه ('+num(ML.compareIds.length)+')</button>' + (isAdmin() ? '<button class="btn small" onclick="MaterialLab.openMaterial()">＋ متریال</button>' : '') + '</div></div>' +
       filters() +
       '<div class="ml-material-grid">'+(list.length ? list.map(card).join('') : '<div class="card" style="grid-column:1/-1;">'+empty('برای این فیلتر متریالی پیدا نشد.')+'</div>')+'</div>';
   }
@@ -308,8 +308,8 @@
     var suitable = Array.isArray(m.suitable_for) ? m.suitable_for.slice(0,3).join('، ') : '';
     return '<article class="ml-material-card">' +
       '<div class="ml-material-cover '+(img?'has-image':'')+'">'+(img?'<img loading="lazy" src="'+esc(img)+'" alt="'+esc(m.name_fa)+'">':'<span>'+esc((cat(m.category_id)||{}).icon || '🧱')+'</span>')+
-        '<button class="ml-fav '+(fav?'active':'')+'" onclick="MaterialLab.favorite(\\''+m.id+'\\')" title="علاقه‌مندی">'+(fav?'★':'☆')+'</button>'+
-        '<button class="ml-compare-check '+(cmp?'active':'')+'" onclick="MaterialLab.toggleCompare(\\''+m.id+'\\')" title="مقایسه">'+(cmp?'✓':'⇄')+'</button>'+
+        '<button class="ml-fav '+(fav?'active':'')+'" onclick="MaterialLab.favorite(\''+m.id+'\')" title="علاقه‌مندی">'+(fav?'★':'☆')+'</button>'+
+        '<button class="ml-compare-check '+(cmp?'active':'')+'" onclick="MaterialLab.toggleCompare(\''+m.id+'\')" title="مقایسه">'+(cmp?'✓':'⇄')+'</button>'+
       '</div>' +
       '<div class="ml-material-body">' +
         '<div class="ml-chip-line"><span class="ml-chip">'+esc(catName(m.category_id))+'</span><span class="ml-stock '+stockClass(m.stock_status)+'">'+esc(m.stock_status || 'نامشخص')+'</span></div>' +
@@ -320,15 +320,15 @@
         (suitable ? '<div class="ml-suitable">مناسب برای: '+esc(suitable)+'</div>' : '') +
         '<div class="ml-price-row"><strong>'+priceLabel(m)+'</strong><span>'+esc(dateLabel(m.price_updated_at))+'</span></div>' +
         '<div class="ml-supplier-row">🏢 '+esc(s ? s.name : 'شرکت ثبت نشده')+'</div>' +
-        '<div class="ml-card-actions"><button class="btn small" onclick="MaterialLab.details(\\''+m.id+'\\')">جزئیات</button>' +
+        '<div class="ml-card-actions"><button class="btn small" onclick="MaterialLab.details(\''+m.id+'\')">جزئیات</button>' +
           ((s&&(s.phone||s.mobile))?'<a class="btn small secondary" href="tel:'+esc(phone(s.phone||s.mobile))+'">تماس</a>':'')+
-          (isAdmin()?'<button class="btn small secondary" onclick="MaterialLab.openMaterial(\\''+m.id+'\\')">ویرایش</button>':'')+
+          (isAdmin()?'<button class="btn small secondary" onclick="MaterialLab.openMaterial(\''+m.id+'\')">ویرایش</button>':'')+
         '</div>' +
       '</div></article>';
   }
 
   function miniMaterial(m){
-    return '<button class="ml-list-row" onclick="MaterialLab.details(\\''+m.id+'\\')"><div><strong>'+esc(m.name_fa)+'</strong><span>'+esc([catName(m.category_id),m.brand,m.finish].filter(Boolean).join(' · '))+'</span></div><strong>'+priceLabel(m)+'</strong></button>';
+    return '<button class="ml-list-row" onclick="MaterialLab.details(\''+m.id+'\')"><div><strong>'+esc(m.name_fa)+'</strong><span>'+esc([catName(m.category_id),m.brand,m.finish].filter(Boolean).join(' · '))+'</span></div><strong>'+priceLabel(m)+'</strong></button>';
   }
 
   function suppliers(){
@@ -352,8 +352,8 @@
         (s.whatsapp?'<a class="btn small secondary" target="_blank" rel="noopener" href="'+esc(wa(s.whatsapp))+'">واتساپ</a>':'')+
         (safeUrl(s.website)?'<a class="btn small secondary" target="_blank" rel="noopener" href="'+esc(safeUrl(s.website))+'">وب‌سایت</a>':'')+
         (s.instagram?'<a class="btn small secondary" target="_blank" rel="noopener" href="'+esc(safeUrl(s.instagram) || s.instagram)+'">اینستاگرام</a>':'')+
-        '<button class="btn small secondary" onclick="MaterialLab.filterSupplier(\\''+s.id+'\\')">متریال‌ها</button>'+
-        (isAdmin()?'<button class="btn small secondary" onclick="MaterialLab.openSupplier(\\''+s.id+'\\')">ویرایش</button><button class="btn small danger" onclick="MaterialLab.deleteSupplier(\\''+s.id+'\\')">حذف</button>':'')+
+        '<button class="btn small secondary" onclick="MaterialLab.filterSupplier(\''+s.id+'\')">متریال‌ها</button>'+
+        (isAdmin()?'<button class="btn small secondary" onclick="MaterialLab.openSupplier(\''+s.id+'\')">ویرایش</button><button class="btn small danger" onclick="MaterialLab.deleteSupplier(\''+s.id+'\')">حذف</button>':'')+
       '</div>'+
       (s.address?'<div class="ml-address">📍 '+esc(s.address)+'</div>':'')+
     '</article>';
@@ -377,8 +377,8 @@
       (c.physical_location?'<div class="ml-line">📦 نسخه فیزیکی: '+esc(c.physical_location)+'</div>':'')+
       '<div class="ml-catalog-foot"><span>📎 '+num(filesCount)+' فایل</span><div>'+
         (safeUrl(c.file_url)?'<a class="btn small" target="_blank" rel="noopener" href="'+esc(safeUrl(c.file_url))+'">باز کردن</a>':'')+
-        '<button class="btn small secondary" onclick="MaterialLab.catalogDetails(\\''+c.id+'\\')">جزئیات</button>'+
-        (isAdmin()?'<button class="btn small secondary" onclick="MaterialLab.openCatalog(\\''+c.id+'\\')">ویرایش</button>':'')+
+        '<button class="btn small secondary" onclick="MaterialLab.catalogDetails(\''+c.id+'\')">جزئیات</button>'+
+        (isAdmin()?'<button class="btn small secondary" onclick="MaterialLab.openCatalog(\''+c.id+'\')">ویرایش</button>':'')+
       '</div></div>'+
     '</div></article>';
   }
@@ -406,7 +406,7 @@
       (f.file_size?'<div class="ml-line">حجم: '+num(Math.round(Number(f.file_size)/1024))+' KB</div>':'')+
       (f.mime_type?'<div class="ml-line">'+esc(f.mime_type)+'</div>':'')+
       '<div class="ml-card-actions">'+(u?'<a class="btn small" target="_blank" rel="noopener" href="'+esc(u)+'">باز کردن فایل</a>':'')+
-      (isAdmin()?'<button class="btn small danger" onclick="MaterialLab.deleteFile(\\''+f.id+'\\')">حذف</button>':'')+'</div></div></article>';
+      (isAdmin()?'<button class="btn small danger" onclick="MaterialLab.deleteFile(\''+f.id+'\')">حذف</button>':'')+'</div></div></article>';
   }
 
   function favorites(){
@@ -418,7 +418,7 @@
   function compare(){
     var list = ML.materials.filter(function(m){ return selected(m.id); });
     return '<div class="ml-view-head"><div><span class="ml-kicker">COMPARISON</span><h3>مقایسه متریال‌ها</h3><p>حداکثر ۴ متریال را انتخاب کن تا مشخصات، قیمت، شرکت و کاربردشان کنار هم دیده شود.</p></div>'+
-      '<div class="ml-head-actions">'+(list.length?'<button class="btn small secondary" onclick="MaterialLab.clearCompare()">پاک کردن مقایسه</button>':'<button class="btn small" onclick="MaterialLab.setView(\\'materials\\')">انتخاب متریال</button>')+'</div></div>'+
+      '<div class="ml-head-actions">'+(list.length?'<button class="btn small secondary" onclick="MaterialLab.clearCompare()">پاک کردن مقایسه</button>':'<button class="btn small" onclick="MaterialLab.setView(\'materials\')">انتخاب متریال</button>')+'</div></div>'+
       (list.length ? compareTable(list) : '<div class="card ml-compare-empty">'+empty('از کارت متریال‌ها روی دکمه ⇄ بزن تا وارد این صفحه شود.')+'</div>');
   }
 
@@ -443,7 +443,7 @@
       ['آخرین به‌روزرسانی قیمت',function(m){return dateLabel(m.price_updated_at);} ],
       ['شرکت',function(m){return supplierName(m.supplier_id);} ]
     ];
-    return '<div class="card table-wrap ml-compare-wrap"><table class="ml-compare-table"><thead><tr><th>مشخصه</th>'+list.map(function(m){return '<th><div class="ml-compare-name">'+esc(m.name_fa)+'</div><button class="btn small danger" onclick="MaterialLab.toggleCompare(\\''+m.id+'\\')">حذف</button></th>';}).join('')+'</tr></thead><tbody>'+
+    return '<div class="card table-wrap ml-compare-wrap"><table class="ml-compare-table"><thead><tr><th>مشخصه</th>'+list.map(function(m){return '<th><div class="ml-compare-name">'+esc(m.name_fa)+'</div><button class="btn small danger" onclick="MaterialLab.toggleCompare(\''+m.id+'\')">حذف</button></th>';}).join('')+'</tr></thead><tbody>'+
       rows.map(function(r){return '<tr><th>'+esc(r[0])+'</th>'+list.map(function(m){return '<td>'+esc(r[1](m))+'</td>';}).join('')+'</tr>';}).join('')+
     '</tbody></table></div>';
   }
@@ -454,7 +454,7 @@
 
     return '<div class="ml-view-head"><div><span class="ml-kicker">PROJECT BOARDS</span><h3>بردهای متریال و برآورد</h3><p>انتخاب متریال پروژه را از حالت عکس و چت خارج می‌کنیم و تبدیلش می‌کنیم به داده قابل برآورد.</p></div><button class="btn" onclick="MaterialLab.openBoard()">＋ برد جدید</button></div>'+
       '<div class="ml-board-layout"><aside class="card ml-board-sidebar">'+
-        (ML.boards.length ? ML.boards.map(function(x){ return '<button class="ml-board-nav '+(b&&b.id===x.id?'active':'')+'" onclick="MaterialLab.selectBoard(\\''+x.id+'\\')"><strong>'+esc(x.name)+'</strong><span>'+esc(projectName(x.project_id))+'</span></button>'; }).join('') : empty('هنوز بردی ساخته نشده.'))+
+        (ML.boards.length ? ML.boards.map(function(x){ return '<button class="ml-board-nav '+(b&&b.id===x.id?'active':'')+'" onclick="MaterialLab.selectBoard(\''+x.id+'\')"><strong>'+esc(x.name)+'</strong><span>'+esc(projectName(x.project_id))+'</span></button>'; }).join('') : empty('هنوز بردی ساخته نشده.'))+
       '</aside><section class="ml-board-content">'+(b?boardDetail(b):'<div class="card">'+empty('یک برد بساز تا انتخاب متریال را شروع کنیم.')+'</div>')+'</section></div>';
   }
 
@@ -467,9 +467,9 @@
     var chosen = items.filter(function(i){ return ['منتخب','تأیید کارفرما','سفارش داده‌شده','اجراشده'].indexOf(i.status) >= 0; }).length;
 
     return '<div class="card ml-board-card"><div class="ml-board-head"><div><span class="ml-kicker">MATERIAL BOARD</span><h3>'+esc(b.name)+'</h3><p>'+esc(projectName(b.project_id))+(b.description?' · '+esc(b.description):'')+'</p></div><div class="ml-board-total"><span>برآورد اولیه</span><strong>'+num(total)+' تومان</strong><small>'+num(chosen)+' آیتم انتخاب‌شده</small></div></div>'+
-      '<div class="ml-board-toolbar"><select id="ml-board-material"><option value="">＋ انتخاب متریال</option>'+ML.materials.map(function(m){ return '<option value="'+m.id+'">'+esc(m.name_fa)+' · '+priceLabel(m)+'</option>'; }).join('')+'</select><input id="ml-board-qty" type="number" min="0" step="0.01" placeholder="مقدار"><input id="ml-board-unit" value="مترمربع" placeholder="واحد"><select id="ml-board-status">'+['پیشنهادی','منتخب','تأیید کارفرما','سفارش داده‌شده','اجراشده'].map(function(s){return '<option>'+s+'</option>';}).join('')+'</select><button class="btn" onclick="MaterialLab.addItem(\\''+b.id+'\\')">افزودن</button></div>'+
+      '<div class="ml-board-toolbar"><select id="ml-board-material"><option value="">＋ انتخاب متریال</option>'+ML.materials.map(function(m){ return '<option value="'+m.id+'">'+esc(m.name_fa)+' · '+priceLabel(m)+'</option>'; }).join('')+'</select><input id="ml-board-qty" type="number" min="0" step="0.01" placeholder="مقدار"><input id="ml-board-unit" value="مترمربع" placeholder="واحد"><select id="ml-board-status">'+['پیشنهادی','منتخب','تأیید کارفرما','سفارش داده‌شده','اجراشده'].map(function(s){return '<option>'+s+'</option>';}).join('')+'</select><button class="btn" onclick="MaterialLab.addItem(\''+b.id+'\')">افزودن</button></div>'+
       '<div class="ml-board-items">'+(items.length?items.map(boardItem).join(''):'<div class="ml-board-empty">'+empty('هنوز متریالی به این برد اضافه نشده.')+'</div>')+'</div>'+
-      '<div class="ml-board-footer"><button class="btn secondary small" onclick="MaterialLab.printBoard(\\''+b.id+'\\')">🖨 چاپ / PDF</button><button class="btn secondary small" onclick="MaterialLab.setView(\\'materials\\')">＋ انتخاب متریال بیشتر</button></div>'+
+      '<div class="ml-board-footer"><button class="btn secondary small" onclick="MaterialLab.printBoard(\''+b.id+'\')">🖨 چاپ / PDF</button><button class="btn secondary small" onclick="MaterialLab.setView(\'materials\')">＋ انتخاب متریال بیشتر</button></div>'+
     '</div>';
   }
 
@@ -483,7 +483,7 @@
       '<div class="ml-board-qty">'+(i.quantity != null ? num(i.quantity)+' '+esc(i.unit || (m&&m.unit) || '') : '—')+'</div>'+
       '<span class="ml-chip">'+esc(i.status || 'پیشنهادی')+'</span>'+
       '<strong class="ml-board-line-total">'+(line?num(line)+' تومان':'—')+'</strong>'+
-      '<div class="ml-inline-actions"><button class="btn small secondary" onclick="MaterialLab.editItem(\\''+i.id+'\\')">ویرایش</button><button class="btn small danger" onclick="MaterialLab.removeItem(\\''+i.id+'\\')">حذف</button></div>'+
+      '<div class="ml-inline-actions"><button class="btn small secondary" onclick="MaterialLab.editItem(\''+i.id+'\')">ویرایش</button><button class="btn small danger" onclick="MaterialLab.removeItem(\''+i.id+'\')">حذف</button></div>'+
     '</div>';
   }
 
@@ -493,7 +493,7 @@
       (isAdmin()?'<button class="btn" onclick="MaterialLab.openPrice()">＋ ثبت قیمت</button>':'')+'</div>'+
       '<div class="card ml-price-summary"><div><strong>'+num(ML.materials.filter(function(m){return Number(m.price||0)>0;}).length)+'</strong><span>متریال قیمت‌دار</span></div><div><strong>'+num(ML.prices.length)+'</strong><span>رکورد قیمت</span></div><div><strong>'+num(counts().recentPrices)+'</strong><span>به‌روزرسانی ۳۰ روز اخیر</span></div></div>'+
       '<div class="card table-wrap"><table><thead><tr><th>متریال</th><th>قیمت</th><th>واحد</th><th>شرکت</th><th>تاریخ</th><th>منبع</th>'+ (isAdmin()?'<th></th>':'') +'</tr></thead><tbody>'+
-      (rows.length?rows.map(function(r){var m=findMaterial(r.material_id);return '<tr><td><button class="ml-link-btn" onclick="MaterialLab.details(\\''+r.material_id+'\\')">'+esc(m?m.name_fa:'—')+'</button></td><td><strong>'+money(r.price)+'</strong> '+esc(r.currency || 'تومان')+'</td><td>'+esc(r.price_unit || (m&&m.price_unit) || '—')+'</td><td>'+esc(supplierName(r.supplier_id || (m&&m.supplier_id)))+'</td><td>'+esc(dateLabel(r.recorded_at))+'</td><td>'+esc(r.source || r.note || '—')+'</td>'+(isAdmin()?'<td><button class="btn small danger" onclick="MaterialLab.deletePrice(\\''+r.id+'\\')">حذف</button></td>':'')+'</tr>';}).join(''):'<tr><td colspan="'+(isAdmin()?7:6)+'">'+empty('هنوز سابقه‌ای وجود ندارد.')+'</td></tr>')+
+      (rows.length?rows.map(function(r){var m=findMaterial(r.material_id);return '<tr><td><button class="ml-link-btn" onclick="MaterialLab.details(\''+r.material_id+'\')">'+esc(m?m.name_fa:'—')+'</button></td><td><strong>'+money(r.price)+'</strong> '+esc(r.currency || 'تومان')+'</td><td>'+esc(r.price_unit || (m&&m.price_unit) || '—')+'</td><td>'+esc(supplierName(r.supplier_id || (m&&m.supplier_id)))+'</td><td>'+esc(dateLabel(r.recorded_at))+'</td><td>'+esc(r.source || r.note || '—')+'</td>'+(isAdmin()?'<td><button class="btn small danger" onclick="MaterialLab.deletePrice(\''+r.id+'\')">حذف</button></td>':'')+'</tr>';}).join(''):'<tr><td colspan="'+(isAdmin()?7:6)+'">'+empty('هنوز سابقه‌ای وجود ندارد.')+'</td></tr>')+
       '</tbody></table></div>';
   }
 
@@ -502,19 +502,19 @@
     return '<div class="ml-view-head"><div><span class="ml-kicker">QUOTE REQUESTS</span><h3>درخواست قیمت</h3><p>استعلام‌ها را ثبت، وضعیت را دنبال و پاسخ را بعداً وارد می‌کنیم.</p></div></div>'+
       '<div class="card ml-request-summary"><div><strong>'+num(rows.length)+'</strong><span>درخواست نمایش‌داده‌شده</span></div><div><strong>'+num(rows.filter(function(r){return String(r.status||'جدید')==='جدید';}).length)+'</strong><span>جدید</span></div><div><strong>'+num(rows.filter(function(r){return String(r.status||'')==='قیمت دریافت شد';}).length)+'</strong><span>قیمت دریافت شد</span></div></div>'+
       '<div class="card table-wrap"><table><thead><tr><th>متریال</th><th>پروژه</th><th>شرکت</th><th>مقدار</th><th>ثبت‌کننده</th><th>وضعیت</th><th>تاریخ</th></tr></thead><tbody>'+
-      (rows.length?rows.map(function(r){var m=findMaterial(r.material_id);return '<tr><td><button class="ml-link-btn" onclick="MaterialLab.details(\\''+r.material_id+'\\')">'+esc(m?m.name_fa:'—')+'</button></td><td>'+esc(projectName(r.project_id))+'</td><td>'+esc(supplierName(r.supplier_id || (m&&m.supplier_id)))+'</td><td>'+(r.quantity!=null?num(r.quantity)+' '+esc(r.unit||''):'—')+'</td><td>'+esc(profileName(r.requested_by))+'</td><td>'+(isAdmin()?'<select onchange="MaterialLab.updateQuoteStatus(\\''+r.id+'\\',this.value)">'+['جدید','پیگیری شد','قیمت دریافت شد','تأیید شد','بسته','لغو شد'].map(function(s){return '<option '+(s===r.status?'selected':'')+'>'+s+'</option>';}).join('')+'</select>':'<span class="ml-chip">'+esc(r.status||'جدید')+'</span>')+'</td><td>'+esc(dateLabel(r.created_at))+'</td></tr>';}).join(''):'<tr><td colspan="7">'+empty('هنوز درخواست قیمتی ثبت نشده.')+'</td></tr>')+
+      (rows.length?rows.map(function(r){var m=findMaterial(r.material_id);return '<tr><td><button class="ml-link-btn" onclick="MaterialLab.details(\''+r.material_id+'\')">'+esc(m?m.name_fa:'—')+'</button></td><td>'+esc(projectName(r.project_id))+'</td><td>'+esc(supplierName(r.supplier_id || (m&&m.supplier_id)))+'</td><td>'+(r.quantity!=null?num(r.quantity)+' '+esc(r.unit||''):'—')+'</td><td>'+esc(profileName(r.requested_by))+'</td><td>'+(isAdmin()?'<select onchange="MaterialLab.updateQuoteStatus(\''+r.id+'\',this.value)">'+['جدید','پیگیری شد','قیمت دریافت شد','تأیید شد','بسته','لغو شد'].map(function(s){return '<option '+(s===r.status?'selected':'')+'>'+s+'</option>';}).join('')+'</select>':'<span class="ml-chip">'+esc(r.status||'جدید')+'</span>')+'</td><td>'+esc(dateLabel(r.created_at))+'</td></tr>';}).join(''):'<tr><td colspan="7">'+empty('هنوز درخواست قیمتی ثبت نشده.')+'</td></tr>')+
       '</tbody></table></div>';
   }
 
   function categories(){
     return '<div class="ml-view-head"><div><span class="ml-kicker">TAXONOMY</span><h3>دسته‌بندی و نظم بانک</h3><p>دسته‌ها را کم ولی کاربردی نگه می‌داریم تا جست‌وجوی دفتر به‌هم نریزد.</p></div>'+(isAdmin()?'<button class="btn" onclick="MaterialLab.openCategory()">＋ دسته جدید</button>':'')+'</div>'+
-      '<div class="ml-category-grid">'+(ML.categories.length?ML.categories.map(function(c){var count=ML.materials.filter(function(m){return m.category_id===c.id;}).length;return '<article class="card ml-category-card"><div class="ml-cat-icon">'+esc(c.icon||'🧱')+'</div><div><h3>'+esc(c.name_fa)+'</h3>'+(c.name_en?'<div class="ml-en">'+esc(c.name_en)+'</div>':'')+'<p>'+esc(c.description||'بدون توضیح')+'</p><strong>'+num(count)+' متریال</strong></div><div class="ml-card-actions"><button class="btn small secondary" onclick="MaterialLab.filter(\\'category\\',\\''+c.id+'\\')">مشاهده</button>'+(isAdmin()?'<button class="btn small secondary" onclick="MaterialLab.openCategory(\\''+c.id+'\\')">ویرایش</button><button class="btn small danger" onclick="MaterialLab.deleteCategory(\\''+c.id+'\\')">حذف</button>':'')+'</div></article>';}).join(''):'<div class="card">'+empty('هنوز دسته‌ای تعریف نشده.')+'</div>')+'</div>';
+      '<div class="ml-category-grid">'+(ML.categories.length?ML.categories.map(function(c){var count=ML.materials.filter(function(m){return m.category_id===c.id;}).length;return '<article class="card ml-category-card"><div class="ml-cat-icon">'+esc(c.icon||'🧱')+'</div><div><h3>'+esc(c.name_fa)+'</h3>'+(c.name_en?'<div class="ml-en">'+esc(c.name_en)+'</div>':'')+'<p>'+esc(c.description||'بدون توضیح')+'</p><strong>'+num(count)+' متریال</strong></div><div class="ml-card-actions"><button class="btn small secondary" onclick="MaterialLab.filter(\'category\',\''+c.id+'\')">مشاهده</button>'+(isAdmin()?'<button class="btn small secondary" onclick="MaterialLab.openCategory(\''+c.id+'\')">ویرایش</button><button class="btn small danger" onclick="MaterialLab.deleteCategory(\''+c.id+'\')">حذف</button>':'')+'</div></article>';}).join(''):'<div class="card">'+empty('هنوز دسته‌ای تعریف نشده.')+'</div>')+'</div>';
   }
 
   function modal(title,body,actions,wide){
     var root = document.getElementById('edit-modal-root');
     if (!root) return;
-    root.innerHTML = '<div class="overlay ml-overlay" onclick="if(event.target===this)this.remove()"><div class="modal material-form-modal '+(wide?'ml-modal-wide':'')+'"><div class="row-top"><h3 style="margin:0;">'+esc(title)+'</h3><button class="btn small secondary" onclick="this.closest(\\'.overlay\\').remove()">بستن</button></div>'+body+'<div class="modal-actions">'+(actions||'')+'</div></div></div>';
+    root.innerHTML = '<div class="overlay ml-overlay" onclick="if(event.target===this)this.remove()"><div class="modal material-form-modal '+(wide?'ml-modal-wide':'')+'"><div class="row-top"><h3 style="margin:0;">'+esc(title)+'</h3><button class="btn small secondary" onclick="this.closest(\'.overlay\').remove()">بستن</button></div>'+body+'<div class="modal-actions">'+(actions||'')+'</div></div></div>';
   }
 
   function input(id,label,value,type,ph){
@@ -566,8 +566,8 @@
       ta('ml-notes','یادداشت داخلی',m&&m.notes);
 
     modal(m?'ویرایش متریال':'افزودن متریال',body,
-      '<button class="btn" onclick="MaterialLab.saveMaterial(\\''+(id||'')+'\\')">ذخیره</button>'+
-      (m?'<button class="btn danger" onclick="MaterialLab.deleteMaterial(\\''+m.id+'\\')">حذف</button>':''),
+      '<button class="btn" onclick="MaterialLab.saveMaterial(\''+(id||'')+'\')">ذخیره</button>'+
+      (m?'<button class="btn danger" onclick="MaterialLab.deleteMaterial(\''+m.id+'\')">حذف</button>':''),
       true);
   }
 
@@ -658,7 +658,7 @@
       input('mls-instagram','اینستاگرام',s&&s.instagram)+
       input('mls-city','شهر',s&&s.city)+
     '</div>'+ta('mls-address','آدرس',s&&s.address)+ta('mls-notes','یادداشت',s&&s.notes);
-    modal(s?'ویرایش شرکت':'افزودن شرکت / تأمین‌کننده',body,'<button class="btn" onclick="MaterialLab.saveSupplier(\\''+(id||'')+'\\')">ذخیره</button>',false);
+    modal(s?'ویرایش شرکت':'افزودن شرکت / تأمین‌کننده',body,'<button class="btn" onclick="MaterialLab.saveSupplier(\''+(id||'')+'\')">ذخیره</button>',false);
   }
 
   async function saveSupplier(id){
@@ -705,7 +705,7 @@
       input('mlc-loc','محل نگهداری نسخه فیزیکی',c&&c.physical_location,'text','قفسه ۲ / کمد متریال')+
       '<label>وضعیت استخراج محتوا</label><select id="mlc-extract">'+optionsHtml([['ثبت نشده','ثبت نشده'],['در انتظار استخراج','در انتظار استخراج'],['در حال پردازش','در حال پردازش'],['استخراج شد','استخراج شد'],['نیازمند بررسی','نیازمند بررسی'],['خطا','خطا']],c&&c.extraction_status || 'ثبت نشده')+'</select>'+
     '</div>'+ta('mlc-desc','توضیحات',c&&c.description)+ta('mlc-notes','یادداشت',c&&c.notes);
-    modal(c?'ویرایش کاتالوگ':'افزودن کاتالوگ / کتاب',body,'<button class="btn" onclick="MaterialLab.saveCatalog(\\''+(id||'')+'\\')">ذخیره</button>',true);
+    modal(c?'ویرایش کاتالوگ':'افزودن کاتالوگ / کتاب',body,'<button class="btn" onclick="MaterialLab.saveCatalog(\''+(id||'')+'\')">ذخیره</button>',true);
   }
 
   async function saveCatalog(id){
@@ -748,7 +748,7 @@
       (c.description?'<div class="ml-detail-box">'+esc(c.description)+'</div>':'')+
       '<div class="modal-section"><h4>📎 فایل‌های مرتبط</h4>'+(fs.length?'<div class="ml-mini-file-list">'+fs.map(fileCard).join('')+'</div>':empty('فایلی به این کاتالوگ وصل نیست.'))+'</div>'+
       '<div class="modal-section"><h4>🧱 متریال‌های مرتبط با شرکت</h4>'+(ms.length?'<div class="ml-material-strip">'+ms.map(card).join('')+'</div>':empty('هنوز متریال مرتبطی ثبت نشده.'))+'</div>';
-    modal('جزئیات کاتالوگ',body,(isAdmin()?'<button class="btn" onclick="this.closest(\\'.overlay\\').remove();MaterialLab.openCatalog(\\''+c.id+'\\')">ویرایش</button>':''),true);
+    modal('جزئیات کاتالوگ',body,(isAdmin()?'<button class="btn" onclick="this.closest(\'.overlay\').remove();MaterialLab.openCatalog(\''+c.id+'\')">ویرایش</button>':''),true);
   }
 
   function openFile(id){
@@ -764,7 +764,7 @@
       input('mlf-size','حجم فایل (bytes)',f&&f.file_size,'number')+
     '</div>'+ta('mlf-notes','یادداشت',f&&f.notes)+
     '<div class="ml-form-note">فعلاً فایل را می‌توانی روی Cloudflare R2، Google Drive، OneDrive یا هر storage دیگری نگه داری و URL آن را اینجا ثبت کنی.</div>';
-    modal(f?'ویرایش فایل':'افزودن فایل / مرجع',body,'<button class="btn" onclick="MaterialLab.saveFile(\\''+(id||'')+'\\')">ذخیره</button>',false);
+    modal(f?'ویرایش فایل':'افزودن فایل / مرجع',body,'<button class="btn" onclick="MaterialLab.saveFile(\''+(id||'')+'\')">ذخیره</button>',false);
   }
 
   async function saveFile(id){
@@ -801,7 +801,7 @@
       input('mlcat-icon','آیکون',c&&c.icon,'text','🧱')+
       input('mlcat-sort','ترتیب',c&&c.sort_order != null ? c.sort_order : 0,'number')+
     '</div>'+ta('mlcat-desc','توضیحات',c&&c.description);
-    modal(c?'ویرایش دسته‌بندی':'افزودن دسته‌بندی',body,'<button class="btn" onclick="MaterialLab.saveCategory(\\''+(id||'')+'\\')">ذخیره</button>');
+    modal(c?'ویرایش دسته‌بندی':'افزودن دسته‌بندی',body,'<button class="btn" onclick="MaterialLab.saveCategory(\''+(id||'')+'\')">ذخیره</button>');
   }
 
   async function saveCategory(id){
@@ -832,7 +832,7 @@
       input('mlb-name','نام برد',b&&b.name,'text','مثلاً Meybod Cafe — Material Board')+
       '<label>پروژه</label><select id="mlb-project"><option value="">بدون پروژه</option>'+optionsHtml(projectList().map(function(p){return [p.id,p.title||p.name];}),b&&b.project_id)+'</select>'+
     '</div>'+ta('mlb-desc','توضیحات',b&&b.description);
-    modal(b?'ویرایش برد':'ساخت برد متریال',body,'<button class="btn" onclick="MaterialLab.saveBoard(\\''+(id||'')+'\\')">ذخیره</button>');
+    modal(b?'ویرایش برد':'ساخت برد متریال',body,'<button class="btn" onclick="MaterialLab.saveBoard(\''+(id||'')+'\')">ذخیره</button>');
   }
 
   async function saveBoard(id){
@@ -861,7 +861,7 @@
       input('mli-unit','واحد',i.unit || (m&&m.unit) || 'مترمربع')+
       '<label>وضعیت</label><select id="mli-status">'+optionsHtml(['پیشنهادی','منتخب','تأیید کارفرما','سفارش داده‌شده','اجراشده'].map(function(x){return [x,x];}),i.status||'پیشنهادی')+'</select>'+
     '</div>'+ta('mli-note','یادداشت',i.note);
-    modal('ویرایش آیتم برد',body,'<button class="btn" onclick="MaterialLab.saveItem(\\''+id+'\\')">ذخیره</button>');
+    modal('ویرایش آیتم برد',body,'<button class="btn" onclick="MaterialLab.saveItem(\''+id+'\')">ذخیره</button>');
   }
 
   async function saveItem(id){
@@ -947,14 +947,14 @@
         (m.website_url&&safeUrl(m.website_url)?'<a class="btn small secondary" target="_blank" rel="noopener" href="'+esc(safeUrl(m.website_url))+'">صفحه محصول</a>':'')+
         (s&&(s.phone||s.mobile)?'<a class="btn small" href="tel:'+esc(phone(s.phone||s.mobile))+'">📞 تماس با شرکت</a>':'')+
         (s&&s.whatsapp?'<a class="btn small secondary" target="_blank" rel="noopener" href="'+esc(wa(s.whatsapp))+'">واتساپ</a>':'')+
-        (isAdmin()?'<button class="btn small secondary" onclick="this.closest(\\'.overlay\\').remove();MaterialLab.openMaterial(\\''+m.id+'\\')">ویرایش</button>':'')+
+        (isAdmin()?'<button class="btn small secondary" onclick="this.closest(\'.overlay\').remove();MaterialLab.openMaterial(\''+m.id+'\')">ویرایش</button>':'')+
       '</div>'+
-      '<div class="modal-section"><h4>🎨 افزودن به برد پروژه</h4><div class="row"><select id="mld-board"><option value="">انتخاب برد...</option>'+ML.boards.map(function(b){return '<option value="'+b.id+'">'+esc(b.name)+'</option>';}).join('')+'</select><input id="mld-qty" type="number" min="0" step="0.01" placeholder="مقدار"><input id="mld-unit" value="'+esc(m.unit||'مترمربع')+'" placeholder="واحد"><select id="mld-status">'+optionsHtml(['پیشنهادی','منتخب','تأیید کارفرما','سفارش داده‌شده','اجراشده'].map(function(x){return [x,x];}),'پیشنهادی')+'</select><button class="btn" onclick="MaterialLab.addDetailBoard(\\''+m.id+'\\')">افزودن</button></div></div>'+
-      '<div class="modal-section"><h4>☎ درخواست قیمت از شرکت</h4><div class="row"><input id="mlq-qty" type="number" min="0" step="0.01" placeholder="مقدار"><input id="mlq-unit" value="'+esc(m.unit||'مترمربع')+'" placeholder="واحد"><select id="mlq-project"><option value="">پروژه (اختیاری)</option>'+optionsHtml(projectList().map(function(p){return [p.id,p.title||p.name];}),'')+'</select></div><textarea id="mlq-msg" rows="2" placeholder="متن پیام برای شرکت"></textarea><button class="btn small" onclick="MaterialLab.quote(\\''+m.id+'\\')">ثبت درخواست قیمت</button></div>'+
+      '<div class="modal-section"><h4>🎨 افزودن به برد پروژه</h4><div class="row"><select id="mld-board"><option value="">انتخاب برد...</option>'+ML.boards.map(function(b){return '<option value="'+b.id+'">'+esc(b.name)+'</option>';}).join('')+'</select><input id="mld-qty" type="number" min="0" step="0.01" placeholder="مقدار"><input id="mld-unit" value="'+esc(m.unit||'مترمربع')+'" placeholder="واحد"><select id="mld-status">'+optionsHtml(['پیشنهادی','منتخب','تأیید کارفرما','سفارش داده‌شده','اجراشده'].map(function(x){return [x,x];}),'پیشنهادی')+'</select><button class="btn" onclick="MaterialLab.addDetailBoard(\''+m.id+'\')">افزودن</button></div></div>'+
+      '<div class="modal-section"><h4>☎ درخواست قیمت از شرکت</h4><div class="row"><input id="mlq-qty" type="number" min="0" step="0.01" placeholder="مقدار"><input id="mlq-unit" value="'+esc(m.unit||'مترمربع')+'" placeholder="واحد"><select id="mlq-project"><option value="">پروژه (اختیاری)</option>'+optionsHtml(projectList().map(function(p){return [p.id,p.title||p.name];}),'')+'</select></div><textarea id="mlq-msg" rows="2" placeholder="متن پیام برای شرکت"></textarea><button class="btn small" onclick="MaterialLab.quote(\''+m.id+'\')">ثبت درخواست قیمت</button></div>'+
       '<div class="modal-section"><h4>💰 آخرین قیمت‌ها</h4>'+(hist.length?'<div class="ml-mini-price-list">'+hist.map(function(x){return '<div><span>'+esc(dateLabel(x.recorded_at))+' · '+esc(x.source||'بدون منبع')+'</span><strong>'+money(x.price)+' '+esc(x.currency||'تومان')+'</strong></div>';}).join(''):' '+empty('هنوز سابقه‌ای ثبت نشده.'))+'</div>'+
       '<div class="modal-section"><h4>📎 فایل‌ها و مراجع</h4>'+(fs.length?'<div class="ml-mini-file-list">'+fs.map(fileCard).join('')+'</div>':empty('هنوز فایلی برای این متریال ثبت نشده.'))+'</div>'+
       (similar.length?'<div class="modal-section"><h4>🔎 متریال‌های مشابه</h4><div class="ml-material-strip">'+similar.map(card).join('')+'</div></div>':'');
-    modal('جزئیات متریال',body,(isAdmin()?'<button class="btn small" onclick="this.closest(\\'.overlay\\').remove();MaterialLab.openPrice(\\''+m.id+'\\')">＋ ثبت قیمت جدید</button>':''),true);
+    modal('جزئیات متریال',body,(isAdmin()?'<button class="btn small" onclick="this.closest(\'.overlay\').remove();MaterialLab.openPrice(\''+m.id+'\')">＋ ثبت قیمت جدید</button>':''),true);
   }
 
   async function addDetailBoard(mid){
