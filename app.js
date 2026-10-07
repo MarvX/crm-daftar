@@ -1014,10 +1014,17 @@ async function enableNotifications() {
   if (!pushSupported()) { alert('این مرورگر از اعلان پشتیبانی نمی‌کند. از کروم یا سافاری استفاده کن.'); return; }
   const p = await Notification.requestPermission();
   if (p !== 'granted') { alert('اجازه‌ی اعلان داده نشد. از تنظیمات مرورگر/گوشی می‌توانی فعالش کنی.'); return; }
+  const saved = await saveNotificationPreferences({ enabled: true });
+  if (!saved) return;
   const ok = await subscribeToPush();
   const btn = document.getElementById('notif-btn');
-  if (ok) { if (btn) btn.classList.add('hidden'); notifyUser('اعلان‌ها فعال شد ✅', 'یادآور ورود (۹ صبح) و خروج (۵ عصر) برای این دستگاه فعال است.'); }
-  else alert('فعال‌سازی اعلان روی سرور ثبت نشد، دوباره تلاش کن.');
+  if (ok) {
+    if (btn) btn.classList.add('hidden');
+    notifyUser('اعلان‌ها فعال شد ✅', 'یادآورهای فعال حساب برای این دستگاه در دسترس هستند.');
+    updateProfileSettingsUI();
+  } else {
+    alert('فعال‌سازی اعلان روی سرور ثبت نشد، دوباره تلاش کن.');
+  }
 }
 
 // نصب اپ روی گوشی
