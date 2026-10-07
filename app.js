@@ -364,6 +364,13 @@ let attendanceReady = false;
 let attendanceStatusPromise = null;
 let notificationChannel = null;
 let notifications = [];
+let notificationPreferences = {
+  enabled: true,
+  task_new: true,
+  task_due: true,
+  attendance_check_in: true,
+  attendance_check_out: true
+};
 let allProfiles = [];
 
 let personalTasks = [], teamPersonalTasks = [];
@@ -432,6 +439,62 @@ async function authHeader() {
 async function apiPost(url, body) {
   const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json', ...(await authHeader()) }, body: JSON.stringify(body || {}) });
   return r.json().catch(() => ({}));
+}
+
+const DEFAULT_NOTIFICATION_PREFERENCES = {
+  enabled: true,
+  task_new: true,
+  task_due: true,
+  attendance_check_in: true,
+  attendance_check_out: true
+};
+
+function normalizeNotificationPreferences(value) {
+  return { ...DEFAULT_NOTIFICATION_PREFERENCES, ...(value && typeof value === 'object' ? value : {}) };
+}
+
+async function loadNotificationPreferences() {
+  notificationPreferences = normalizeNotificationPreferences(currentProfile?.notification_preferences);
+  if (!currentUser?.id) return notificationPreferences;
+  const { data, error } = await sb.from('profiles').select('notification_preferences').eq('id', currentUser.id).single();
+  if (!error && data) notificationPreferences = normalizeNotificationPreferences(data.notification_preferences);
+  if (currentProfile) currentProfile.notification_preferences = notificationPreferences;
+  return notificationPreferences;
+}
+
+async function saveNotificationPreferences(patch) {
+  const next = normalizeNotificationPreferences({ ...notificationPreferences, ...patch });
+  const { data, error } = await sb.from('profiles').update({ notification_preferences: next }).eq('id', currentUser.id).select('notification_preferences').single();
+  if (error) {
+    alert('ذخیره تنظیمات اعلان انجام نشد: ' + error.message);
+    return false;
+  }
+  notificationPreferences = normalizeNotificationPreferences(data?.notification_preferences || next);
+  if (currentProfile) currentProfile.notification_preferences = notificationPreferences;
+  return true;
+}
+
+function notificationPreferenceEnabled(key = 'enabled') {
+  return !!notificationPreferences.enabled && notificationPreferences[key] !== false;
+}
+
+function notificationPreferenceKey(notification) {
+  if (notification?.type === 'task' || notification?.type === 'task_new') return 'task_new';
+  if (notification?.type === 'deadline' || notification?.type === 'task_due' || notification?.type === 'due') return 'task_due';
+  return 'enabled';
+}
+
+async function syncPushSubscriptionWithPreferences() {
+  if (!pushSupported() || !swReg) return;
+  const sub = await swReg.pushManager.getSubscription();
+  if (notificationPreferences.enabled && 'Notification' in window && Notification.permission === 'granted') {
+    if (!sub) await subscribeToPush();
+    return;
+  }
+  if (sub) {
+    try { await apiPost('/api/push-subscribe', { action: 'unsubscribe', endpoint: sub.endpoint }); } catch (_) {}
+    try { await sub.unsubscribe(); } catch (_) {}
+  }
 }
 
 // ================= AUTH =================
@@ -539,7 +602,8 @@ const NAV_GROUPS = [
 const SECTION_TITLES = {
   ...Object.fromEntries(NAV_ITEMS.map(item => [item.id, item.label])),
   'erp-tasks': 'وظایف مدیریتی',
-  'office-tasks': 'کارهای مرتبط با کارفرما'
+  'office-tasks': 'کارهای مرتبط با کارفرما',
+  'notification-settings': 'اعلان‌ها'
 };
 
 let activeSectionId = 'dashboard';
@@ -694,7 +758,7 @@ function openSettingsCenter() {
             <span class="settings-row-action">${isDark ? 'روشن' : 'تیره'}</span>
           </button>
 
-          <button type="button" class="settings-row" onclick="enableNotifications();setTimeout(openSettingsCenter,500)">
+          <button type="button" class="settings-row" onclick="this.closest('.overlay').remove();switchSection('notification-settings')">
             <span class="settings-row-icon">🔔</span>
             <span class="settings-row-copy"><strong>اعلان‌ها</strong><small>${notifGranted ? 'اعلان‌های این دستگاه فعال است' : notifSupported ? 'اعلان هنوز فعال نشده' : 'این مرورگر اعلان وب را پشتیبانی نمی‌کند'}</small></span>
             <span class="settings-row-action">${notifGranted ? 'فعال ✓' : 'فعال‌سازی'}</span>
@@ -762,6 +826,67 @@ function playBrandSectionMotion() {
   setTimeout(() => mark.remove(), 760);
 }
 
+function notificationToggle(key, title, description) {
+  const on = notificationPreferenceEnabled(key);
+  const icon = key === 'task_new' ? '📋' : key === 'task_due' ? '📅' : key === 'attendance_check_in' ? '🕘' : '🕔';
+  return '<button type="button" class="notification-preference-row" onclick="setNotificationPreference(\\'' + key + '\\', ' + (!on) + ')">'
+    + '<span class="notification-preference-icon">' + icon + '</span>'
+    + '<span class="notification-preference-copy"><strong>' + title + '</strong><small>' + description + '</small></span>'
+    + '<span class="notification-switch ' + (on ? 'active' : '') + '" aria-hidden="true"><span></span></span>'
+    + '</button>';
+}
+
+function renderNotificationSettings() {
+  const supported = pushSupported();
+  const permission = 'Notification' in window ? Notification.permission : 'unsupported';
+  const masterOn = notificationPreferences.enabled;
+  return '<div class="notification-settings-page">'
+    + '<div class="notification-settings-top"><button type="button" class="btn small secondary" onclick="openSettingsCenter()">← بازگشت به تنظیمات</button></div>'
+    + '<div class="card notification-preferences-hero">'
+    + '<div class="notification-preference-head"><span class="profile-setting-icon">🔔</span><div><strong>دریافت اعلان‌ها</strong><div class="sr-meta">اعلان‌های سیستم، یادآوری‌ها و هشدارهای مرتبط با حساب</div></div>'
+    + '<button type="button" class="notification-switch ' + (masterOn ? 'active' : '') + '" onclick="setNotificationPreference(\\'enabled\\', ' + (!masterOn) + ')" aria-label="' + (masterOn ? 'خاموش کردن اعلان‌ها' : 'روشن کردن اعلان‌ها') + '"><span></span></button></div>'
+    + '<div class="notification-device-status ' + (permission === 'granted' && masterOn ? 'ok' : '') + '">'
+    + (!supported ? 'مرورگر فعلی اعلان وب را پشتیبانی نمی‌کند.' : permission === 'granted' && masterOn ? 'اعلان‌های این دستگاه فعال است.' : permission === 'denied' ? 'اجازه اعلان توسط مرورگر رد شده؛ از تنظیمات مرورگر فعالش کن.' : 'با روشن کردن کلید اصلی، اجازه اعلان دستگاه هم در صورت نیاز درخواست می‌شود.')
+    + '</div></div>'
+    + '<div class="notification-preference-group"><div class="notification-group-title"><strong>اعلان‌های سیستم</strong><span>کنترل هر نوع اعلان به‌صورت جداگانه</span></div>'
+    + notificationToggle('task_new', 'وظیفه جدید', 'وقتی وظیفه‌ای برایت ایجاد یا به تو اختصاص داده می‌شود.')
+    + notificationToggle('task_due', 'نزدیک شدن مهلت وظیفه', 'یادآوری مربوط به نزدیک شدن زمان تحویل وظایف.')
+    + '</div>'
+    + '<div class="notification-preference-group"><div class="notification-group-title"><strong>حضور و غیاب</strong><span>یادآوری‌های ساعت شروع و پایان کار</span></div>'
+    + notificationToggle('attendance_check_in', 'یادآوری ثبت ورود', 'یادآوری ساعت ۰۹:۰۰ در روزهای کاری.')
+    + notificationToggle('attendance_check_out', 'یادآوری ثبت خروج', 'یادآوری ساعت ۱۷:۰۰ در روزهای کاری.')
+    + '</div>'
+    + '<div class="card notification-settings-note"><strong>نکته</strong><span>خاموش کردن کلید اصلی، اعلان‌های Push این دستگاه را هم غیرفعال می‌کند. تاریخچه اعلان‌ها در پنل باقی می‌ماند.</span></div>'
+    + '</div>';
+}
+
+async function setNotificationPreference(key, value) {
+  const nextValue = !!value;
+  if (key === 'enabled' && nextValue && pushSupported() && 'Notification' in window && Notification.permission !== 'granted') {
+    const permission = await Notification.requestPermission();
+    if (permission !== 'granted') {
+      showToast('اجازه اعلان فعال نشد.');
+      renderNotificationSettingsIntoPage();
+      return;
+    }
+  }
+  const ok = await saveNotificationPreferences({ [key]: nextValue });
+  if (!ok) return;
+  if (key === 'enabled') {
+    try { await syncPushSubscriptionWithPreferences(); } catch (_) {}
+  }
+  renderNotificationSettingsIntoPage();
+  updateProfileSettingsUI();
+  if (key === 'enabled' && nextValue) showToast('اعلان‌ها فعال شدند ✅');
+  else if (key === 'enabled') showToast('اعلان‌ها خاموش شدند.');
+}
+
+function renderNotificationSettingsIntoPage() {
+  const section = document.getElementById('section-notification-settings');
+  if (!section || section.classList.contains('hidden')) return;
+  section.innerHTML = renderNotificationSettings();
+}
+
 function switchSection(id) {
   const previousSectionId = activeSectionId;
   activeSectionId = id;
@@ -783,7 +908,8 @@ function switchSection(id) {
     projects: renderProjects, contracts: renderContracts, team: renderTeam,
     profile: renderProfile, employees: renderEmployees,
     'erp-tasks': renderErpTasks, costs: renderFixedCosts, tenders: renderTenders,
-    'office-tasks': renderOfficeTasks
+    'office-tasks': renderOfficeTasks,
+    'notification-settings': renderNotificationSettings
   };
 
   if (id === 'attendance') renderAttendanceSection();
@@ -805,6 +931,7 @@ async function loadProfileAndShowApp() {
     is_admin: false
   };
   if (profileError) console.warn('Profile load failed:', profileError.message);
+  await loadNotificationPreferences();
   document.getElementById('login-screen').classList.add('hidden');
   document.getElementById('app-root').classList.remove('hidden');
   document.getElementById('user-badge').innerText = `${currentProfile.full_name || ''} ${currentProfile.role_title ? '— ' + currentProfile.role_title : ''}`;
@@ -849,6 +976,7 @@ function showToast(msg) {
   setTimeout(() => t.remove(), 7000);
 }
 async function notifyUser(title, body) {
+  if (!notificationPreferenceEnabled('enabled')) return;
   showToast(`${title}: ${body}`);
   if (!('Notification' in window) || Notification.permission !== 'granted') return;
   try {
@@ -925,7 +1053,7 @@ async function startTaskNotifications() {
   if ('serviceWorker' in navigator) { try { swReg = await navigator.serviceWorker.register('/sw.js'); } catch (e) {} }
   updateInstallBtn();
   const btn = document.getElementById('notif-btn');
-  if (pushSupported() && Notification.permission === 'granted') {
+  if (notificationPreferences.enabled && pushSupported() && Notification.permission === 'granted') {
     subscribeToPush().catch(() => {});
     if (btn) btn.classList.add('hidden');
   } else if (btn) {
@@ -993,7 +1121,7 @@ function startNotificationCenter() {
       const n=payload.new;
       notifications=[n,...notifications].slice(0,30);
       renderNotificationBell();
-      notifyUser(n.title,n.body||'');
+      if (notificationPreferenceEnabled(notificationPreferenceKey(n))) notifyUser(n.title,n.body||'');
       if (document.getElementById('notification-list')) renderNotificationList();
     })
     .subscribe();
@@ -1091,7 +1219,7 @@ function renderProfile() {
       </div>
       <div class="card">
         <div class="profile-setting-head"><span class="profile-setting-icon">🔔</span><div><strong>اعلان‌ها</strong><div id="profile-notification-status" class="sr-meta">در حال بررسی...</div></div></div>
-        <button class="btn small secondary" onclick="enableNotifications();setTimeout(updateProfileSettingsUI,300)">فعال‌سازی اعلان</button>
+        <button class="btn small secondary" onclick="switchSection('notification-settings')">مدیریت اعلان‌ها</button>
       </div>
       <div class="card">
         <div class="profile-setting-head"><span class="profile-setting-icon">🔐</span><div><strong>امنیت حساب</strong><div class="sr-meta">رمز ورود را هر زمان خواستی تغییر بده</div></div></div>
@@ -1127,7 +1255,7 @@ function updateProfileSettingsUI() {
   if (notif) {
     const supported = pushSupported();
     const granted = supported && 'Notification' in window && Notification.permission === 'granted';
-    notif.textContent = granted ? 'اعلان روی این دستگاه فعال است' : supported ? 'اعلان هنوز فعال نشده' : 'این مرورگر اعلان وب را پشتیبانی نمی‌کند';
+    notif.textContent = !supported ? 'این مرورگر اعلان وب را پشتیبانی نمی‌کند' : notificationPreferences.enabled && granted ? 'اعلان‌ها فعال هستند' : notificationPreferences.enabled ? 'اعلان‌ها در انتظار فعال‌سازی دستگاه هستند' : 'اعلان‌ها خاموش هستند';
   }
   const cal = document.getElementById('profile-calendar-status');
   if (cal) cal.textContent = googleStatus?.me?.needs_reconnect ? 'اتصال نیاز به بازسازی دارد' : googleStatus?.me?.connected ? 'تقویم متصل است' : 'تقویم هنوز متصل نیست';
