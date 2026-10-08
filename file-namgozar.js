@@ -1,13 +1,13 @@
 /* DAST STUDIO — استاندارد نام‌گذاری فایل پروژه */
 (function(){'use strict';
-var S={file:null,employees:[],initialsMap:{'دریا نورعلیئی':'DN'}};
+var S={file:null,employees:[],initialsMap:{'دریا نورعلیئی':'DN','EM':'EM','EK':'EK','MS':'MS','MF':'MF'}};
 var $=function(id){return document.getElementById(id)};
 function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
 function pad2(v){return String(v).padStart(2,'0')}
 function sanitize(v){return String(v||'').trim().replace(/[\\/:*?"<>|]/g,'').replace(/\s+/g,'-')}
 function initialsForEmployee(n){var x=String(n||'').trim();if(S.initialsMap[x])return S.initialsMap[x];if(x.indexOf('دریا')>=0&&x.indexOf('نورعلی')>=0)return 'DN';var a=x.replace(/[^A-Za-z\s-]/g,' ').trim().split(/[\s-]+/).filter(Boolean);return a.length>=2?(a[0][0]+a[1][0]).toUpperCase():a.length===1?a[0].slice(0,2).toUpperCase():''}
 async function loadEmployees(){if(S.employees.length)return;var r=await sb.from('employee_directory').select('id,full_name,role_title,department').order('full_name',{ascending:true});if(r.error){console.warn('File Namer employee directory:',r.error.message);S.employees=[];return}S.employees=r.data||[]}
-function employeeOptions(sel){var rows=S.employees.map(function(p){return {p:p,code:initialsForEmployee(p.full_name)}}).filter(function(x){return x.p.full_name&&x.code});if(!rows.length)return '<option value="DN">DN — دریا نورعلیئی</option>';return rows.map(function(x){return '<option value="'+esc(x.code)+'" '+(x.code===sel?'selected':'')+'>'+esc(x.code)+' — '+esc(x.p.full_name)+(x.p.role_title?' · '+esc(x.p.role_title):'')+'</option>'}).join('')}
+function employeeOptions(sel){var rows=S.employees.map(function(p){return {p:p,code:initialsForEmployee(p.full_name)}}).filter(function(x){return x.p.full_name&&x.code});if(!rows.length)return '<option value="DN">DN — دریا نورعلیئی</option><option value="EM">EM</option><option value="EK">EK</option><option value="MS">MS</option><option value="MF">MF</option>'; return rows.map(function(x){return '<option value="'+esc(x.code)+'" '+(x.code===sel?'selected':'')+'>'+esc(x.code)+' — '+esc(x.p.full_name)+(x.p.role_title?' · '+esc(x.p.role_title):'')+'</option>'}).join('')}
 function ext(){if(!S.file)return '';var m=S.file.name.match(/\.[^.]+$/);return m?m[0]:''}
 function parts(){var v=Math.max(1,Math.min(99,parseInt($('fn-version').value,10)||1));return {project:sanitize($('fn-project').value).toUpperCase(),phase:sanitize($('fn-phase').value).toUpperCase(),discipline:sanitize($('fn-discipline').value).toUpperCase(),docType:sanitize($('fn-doc-type').value).toUpperCase(),date:String($('fn-date').value||'').replace(/\D/g,''),version:'V'+pad2(v),initials:sanitize($('fn-initials').value).toUpperCase(),status:sanitize($('fn-status').value).toUpperCase()}}
 function validate(p){var e=[];if(!p.project)e.push('نام پروژه خالی است');if(!/^\d{8}$/.test(p.date))e.push('تاریخ باید ۸ رقم باشد');if(!p.initials)e.push('کارمند / کد شخص انتخاب نشده');return e}
