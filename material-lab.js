@@ -406,7 +406,7 @@
       (f.file_size?'<div class="ml-line">حجم: '+num(Math.round(Number(f.file_size)/1024))+' KB</div>':'')+
       (f.mime_type?'<div class="ml-line">'+esc(f.mime_type)+'</div>':'')+
       '<div class="ml-card-actions">'+(u?'<a class="btn small" target="_blank" rel="noopener" href="'+esc(u)+'">باز کردن فایل</a>':'')+
-      (isAdmin()?'<button class="btn small danger" onclick="MaterialLab.deleteFile(\''+f.id+'\')">حذف</button>':'')+'</div></div></article>';
+      (isAdmin()?'<button class="btn small secondary" onclick="MaterialLab.openFile(\''+f.id+'\')">ویرایش</button><button class="btn small danger" onclick="MaterialLab.deleteFile(\''+f.id+'\')">حذف</button>':'')+'</div></div></article>';
   }
 
   function favorites(){
@@ -466,7 +466,7 @@
     },0);
     var chosen = items.filter(function(i){ return ['منتخب','تأیید کارفرما','سفارش داده‌شده','اجراشده'].indexOf(i.status) >= 0; }).length;
 
-    return '<div class="card ml-board-card"><div class="ml-board-head"><div><span class="ml-kicker">MATERIAL BOARD</span><h3>'+esc(b.name)+'</h3><p>'+esc(projectName(b.project_id))+(b.description?' · '+esc(b.description):'')+'</p></div><div class="ml-board-total"><span>برآورد اولیه</span><strong>'+num(total)+' تومان</strong><small>'+num(chosen)+' آیتم انتخاب‌شده</small></div></div>'+
+    return '<div class="card ml-board-card"><div class="ml-board-head"><div><span class="ml-kicker">MATERIAL BOARD</span><h3>'+esc(b.name)+'</h3><p>'+esc(projectName(b.project_id))+(b.description?' · '+esc(b.description):'')+'</p></div><div class="ml-board-total"><span>برآورد اولیه</span><strong>'+num(total)+' تومان</strong><small>'+num(chosen)+' آیتم انتخاب‌شده</small><div class="ml-inline-actions"><button class="btn small secondary" onclick="MaterialLab.openBoard(\''+b.id+'\')">ویرایش برد</button>'+(isAdmin()?'<button class="btn small danger" onclick="MaterialLab.deleteBoard(\''+b.id+'\')">حذف برد</button>':'')+'</div></div></div>'+
       '<div class="ml-board-toolbar"><select id="ml-board-material"><option value="">＋ انتخاب متریال</option>'+ML.materials.map(function(m){ return '<option value="'+m.id+'">'+esc(m.name_fa)+' · '+priceLabel(m)+'</option>'; }).join('')+'</select><input id="ml-board-qty" type="number" min="0" step="0.01" placeholder="مقدار"><input id="ml-board-unit" value="مترمربع" placeholder="واحد"><select id="ml-board-status">'+['پیشنهادی','منتخب','تأیید کارفرما','سفارش داده‌شده','اجراشده'].map(function(s){return '<option>'+s+'</option>';}).join('')+'</select><button class="btn" onclick="MaterialLab.addItem(\''+b.id+'\')">افزودن</button></div>'+
       '<div class="ml-board-items">'+(items.length?items.map(boardItem).join(''):'<div class="ml-board-empty">'+empty('هنوز متریالی به این برد اضافه نشده.')+'</div>')+'</div>'+
       '<div class="ml-board-footer"><button class="btn secondary small" onclick="MaterialLab.printBoard(\''+b.id+'\')">🖨 چاپ / PDF</button><button class="btn secondary small" onclick="MaterialLab.setView(\'materials\')">＋ انتخاب متریال بیشتر</button></div>'+
@@ -493,17 +493,72 @@
       (isAdmin()?'<button class="btn" onclick="MaterialLab.openPrice()">＋ ثبت قیمت</button>':'')+'</div>'+
       '<div class="card ml-price-summary"><div><strong>'+num(ML.materials.filter(function(m){return Number(m.price||0)>0;}).length)+'</strong><span>متریال قیمت‌دار</span></div><div><strong>'+num(ML.prices.length)+'</strong><span>رکورد قیمت</span></div><div><strong>'+num(counts().recentPrices)+'</strong><span>به‌روزرسانی ۳۰ روز اخیر</span></div></div>'+
       '<div class="card table-wrap"><table><thead><tr><th>متریال</th><th>قیمت</th><th>واحد</th><th>شرکت</th><th>تاریخ</th><th>منبع</th>'+ (isAdmin()?'<th></th>':'') +'</tr></thead><tbody>'+
-      (rows.length?rows.map(function(r){var m=findMaterial(r.material_id);return '<tr><td><button class="ml-link-btn" onclick="MaterialLab.details(\''+r.material_id+'\')">'+esc(m?m.name_fa:'—')+'</button></td><td><strong>'+money(r.price)+'</strong> '+esc(r.currency || 'تومان')+'</td><td>'+esc(r.price_unit || (m&&m.price_unit) || '—')+'</td><td>'+esc(supplierName(r.supplier_id || (m&&m.supplier_id)))+'</td><td>'+esc(dateLabel(r.recorded_at))+'</td><td>'+esc(r.source || r.note || '—')+'</td>'+(isAdmin()?'<td><button class="btn small danger" onclick="MaterialLab.deletePrice(\''+r.id+'\')">حذف</button></td>':'')+'</tr>';}).join(''):'<tr><td colspan="'+(isAdmin()?7:6)+'">'+empty('هنوز سابقه‌ای وجود ندارد.')+'</td></tr>')+
+      (rows.length?rows.map(function(r){var m=findMaterial(r.material_id);return '<tr><td><button class="ml-link-btn" onclick="MaterialLab.details(\''+r.material_id+'\')">'+esc(m?m.name_fa:'—')+'</button></td><td><strong>'+money(r.price)+'</strong> '+esc(r.currency || 'تومان')+'</td><td>'+esc(r.price_unit || (m&&m.price_unit) || '—')+'</td><td>'+esc(supplierName(r.supplier_id || (m&&m.supplier_id)))+'</td><td>'+esc(dateLabel(r.recorded_at))+'</td><td>'+esc(r.source || r.note || '—')+'</td>'+(isAdmin()?'<td><div class="ml-inline-actions"><button class="btn small secondary" onclick="MaterialLab.openPrice(null,\''+r.id+'\')">ویرایش</button><button class="btn small danger" onclick="MaterialLab.deletePrice(\''+r.id+'\')">حذف</button></div></td>':'')+'</tr>';}).join(''):'<tr><td colspan="'+(isAdmin()?7:6)+'">'+empty('هنوز سابقه‌ای وجود ندارد.')+'</td></tr>')+
       '</tbody></table></div>';
   }
 
   function requests(){
     var rows = ML.requests.filter(function(r){ return isAdmin() || r.requested_by === userId(); });
-    return '<div class="ml-view-head"><div><span class="ml-kicker">QUOTE REQUESTS</span><h3>درخواست قیمت</h3><p>استعلام‌ها را ثبت، وضعیت را دنبال و پاسخ را بعداً وارد می‌کنیم.</p></div></div>'+
+    return '<div class="ml-view-head"><div><span class="ml-kicker">QUOTE REQUESTS</span><h3>درخواست قیمت</h3><p>استعلام‌ها را ثبت، ویرایش و پیگیری کن؛ حتی بعد از ثبت هم اطلاعات درخواست قابل اصلاح است.</p></div></div>'+
       '<div class="card ml-request-summary"><div><strong>'+num(rows.length)+'</strong><span>درخواست نمایش‌داده‌شده</span></div><div><strong>'+num(rows.filter(function(r){return String(r.status||'جدید')==='جدید';}).length)+'</strong><span>جدید</span></div><div><strong>'+num(rows.filter(function(r){return String(r.status||'')==='قیمت دریافت شد';}).length)+'</strong><span>قیمت دریافت شد</span></div></div>'+
-      '<div class="card table-wrap"><table><thead><tr><th>متریال</th><th>پروژه</th><th>شرکت</th><th>مقدار</th><th>ثبت‌کننده</th><th>وضعیت</th><th>تاریخ</th></tr></thead><tbody>'+
-      (rows.length?rows.map(function(r){var m=findMaterial(r.material_id);return '<tr><td><button class="ml-link-btn" onclick="MaterialLab.details(\''+r.material_id+'\')">'+esc(m?m.name_fa:'—')+'</button></td><td>'+esc(projectName(r.project_id))+'</td><td>'+esc(supplierName(r.supplier_id || (m&&m.supplier_id)))+'</td><td>'+(r.quantity!=null?num(r.quantity)+' '+esc(r.unit||''):'—')+'</td><td>'+esc(profileName(r.requested_by))+'</td><td>'+(isAdmin()?'<select onchange="MaterialLab.updateQuoteStatus(\''+r.id+'\',this.value)">'+['جدید','پیگیری شد','قیمت دریافت شد','تأیید شد','بسته','لغو شد'].map(function(s){return '<option '+(s===r.status?'selected':'')+'>'+s+'</option>';}).join('')+'</select>':'<span class="ml-chip">'+esc(r.status||'جدید')+'</span>')+'</td><td>'+esc(dateLabel(r.created_at))+'</td></tr>';}).join(''):'<tr><td colspan="7">'+empty('هنوز درخواست قیمتی ثبت نشده.')+'</td></tr>')+
+      '<div class="card table-wrap"><table><thead><tr><th>متریال</th><th>پروژه</th><th>شرکت</th><th>مقدار</th><th>ثبت‌کننده</th><th>وضعیت</th><th>تاریخ</th><th>عملیات</th></tr></thead><tbody>'+
+      (rows.length?rows.map(function(r){
+        var m=findMaterial(r.material_id);
+        var canEdit=isAdmin() || r.requested_by===userId();
+        return '<tr><td><button class="ml-link-btn" onclick="MaterialLab.details(\''+r.material_id+'\')">'+esc(m?m.name_fa:'—')+'</button></td><td>'+esc(projectName(r.project_id))+'</td><td>'+esc(supplierName(r.supplier_id || (m&&m.supplier_id)))+'</td><td>'+(r.quantity!=null?num(r.quantity)+' '+esc(r.unit||''):'—')+'</td><td>'+esc(profileName(r.requested_by))+'</td><td>'+
+          (isAdmin()?'<select onchange="MaterialLab.updateQuoteStatus(\''+r.id+'\',this.value)">'+['جدید','پیگیری شد','قیمت دریافت شد','تأیید شد','بسته','لغو شد'].map(function(s){return '<option '+(s===r.status?'selected':'')+'>'+s+'</option>';}).join('')+'</select>':'<span class="ml-chip">'+esc(r.status||'جدید')+'</span>')+
+          '</td><td>'+esc(dateLabel(r.created_at))+'</td><td><div class="ml-inline-actions">'+(canEdit?'<button class="btn small secondary" onclick="MaterialLab.openQuote(\''+r.id+'\')">ویرایش</button><button class="btn small danger" onclick="MaterialLab.deleteQuote(\''+r.id+'\')">حذف</button>':'—')+'</div></td></tr>';
+      }).join(''):'<tr><td colspan="8">'+empty('هنوز درخواست قیمتی ثبت نشده.')+'</td></tr>')+
       '</tbody></table></div>';
+  }
+
+  function openQuote(id){
+    var r=id?ML.requests.find(function(x){return x.id===id;}):null;
+    if(id && !r) return toast('درخواست پیدا نشد.');
+    if(r && !(isAdmin() || r.requested_by===userId())) return toast('دسترسی ویرایش این درخواست را نداری.');
+    var m=r?findMaterial(r.material_id):null;
+    var body='<div class="material-form-grid">'+
+      '<label>متریال</label><select id="mlqr-material"><option value="">—</option>'+optionsHtml(ML.materials.map(function(x){return [x.id,x.name_fa];}),r&&r.material_id)+'</select>'+
+      '<label>پروژه</label><select id="mlqr-project"><option value="">بدون پروژه</option>'+optionsHtml(projectList().map(function(p){return [p.id,p.title||p.name];}),r&&r.project_id)+'</select>'+
+      '<label>شرکت</label><select id="mlqr-supplier"><option value="">از متریال</option>'+optionsHtml(ML.suppliers.map(function(s){return [s.id,s.name];}),r&&r.supplier_id)+'</select>'+
+      input('mlqr-qty','مقدار',r&&r.quantity,'number')+
+      input('mlqr-unit','واحد',r&&r.unit || (m&&m.unit) || 'مترمربع')+
+      '<label>وضعیت</label><select id="mlqr-status">'+optionsHtml(['جدید','پیگیری شد','قیمت دریافت شد','تأیید شد','بسته','لغو شد'].map(function(x){return [x,x];}),r&&r.status||'جدید')+'</select>'+
+    '</div>'+ta('mlqr-message','پیام / توضیحات',r&&r.message);
+    modal(r?'ویرایش درخواست قیمت':'درخواست قیمت',body,'<button class="btn" onclick="MaterialLab.saveQuote(\''+(id||'')+'\')">ذخیره</button>');
+  }
+
+  async function saveQuote(id){
+    var p={
+      material_id:document.getElementById('mlqr-material').value||null,
+      project_id:document.getElementById('mlqr-project').value||null,
+      supplier_id:document.getElementById('mlqr-supplier').value||null,
+      quantity:document.getElementById('mlqr-qty').value?Number(document.getElementById('mlqr-qty').value):null,
+      unit:document.getElementById('mlqr-unit').value.trim()||null,
+      status:document.getElementById('mlqr-status').value||'جدید',
+      message:document.getElementById('mlqr-message').value.trim()||null,
+      updated_at:new Date().toISOString()
+    };
+    if(!p.material_id) return toast('متریال را انتخاب کن.');
+    if(id){
+      var old=ML.requests.find(function(x){return x.id===id;});
+      if(!old || !(isAdmin() || old.requested_by===userId())) return toast('دسترسی این درخواست را نداری.');
+      var ur=await sb.from('material_quote_requests').update(p).eq('id',id);
+      if(ur.error) return toast('درخواست به‌روزرسانی نشد: '+ur.error.message);
+      closeModal(); toast('درخواست قیمت به‌روزرسانی شد ✅'); await load(); refreshDom(); return;
+    }
+    p.requested_by=userId();
+    var r=await sb.from('material_quote_requests').insert([p]);
+    if(r.error) return toast('درخواست ثبت نشد: '+r.error.message);
+    closeModal(); toast('درخواست قیمت ثبت شد ✅'); await load(); refreshDom();
+  }
+
+  async function deleteQuote(id){
+    var r=ML.requests.find(function(x){return x.id===id;});
+    if(!r || !(isAdmin() || r.requested_by===userId()) || !confirm('این درخواست قیمت حذف شود؟')) return;
+    var d=await sb.from('material_quote_requests').delete().eq('id',id);
+    if(d.error) return toast('درخواست حذف نشد: '+d.error.message);
+    await load(); refreshDom();
   }
 
   function categories(){
@@ -1000,45 +1055,59 @@
     await load(); refreshDom();
   }
 
-  function openPrice(materialId){
+  function openPrice(materialId, priceId){
     if(!isAdmin()) return;
-    var m=materialId?findMaterial(materialId):null;
+    var record = priceId ? ML.prices.find(function(x){return x.id===priceId;}) : null;
+    var m = record ? findMaterial(record.material_id) : (materialId ? findMaterial(materialId) : null);
+    if(priceId && !record) return toast('رکورد قیمت پیدا نشد.');
     var body='<div class="material-form-grid">'+
-      '<label>متریال</label><select id="mlp-material"><option value="">—</option>'+optionsHtml(ML.materials.map(function(x){return [x.id,x.name_fa];}),m&&m.id)+'</select>'+
-      input('mlp-price','قیمت',m&&m.price,'number','مثلاً 2800000')+
-      input('mlp-unit','واحد قیمت',m&&m.price_unit||'مترمربع')+
-      '<label>واحد پول</label><select id="mlp-currency">'+optionsHtml([['تومان','تومان'],['ریال','ریال'],['دلار','دلار'],['یورو','یورو']],m&&m.currency||'تومان')+'</select>'+
-      input('mlp-date','تاریخ',m&&m.price_updated_at,'date')+
-      '<label>شرکت</label><select id="mlp-supplier"><option value="">—</option>'+optionsHtml(ML.suppliers.map(function(s){return [s.id,s.name];}),m&&m.supplier_id)+'</select>'+
-      input('mlp-source','منبع','', 'text','پیش‌فاکتور / واتساپ / سایت')+
-    '</div>'+ta('mlp-note','یادداشت');
-    modal('ثبت قیمت جدید',body,'<button class="btn" onclick="MaterialLab.savePrice()">ذخیره قیمت</button>');
+      '<label>متریال</label><select id="mlp-material" '+(record?'disabled':'')+'><option value="">—</option>'+optionsHtml(ML.materials.map(function(x){return [x.id,x.name_fa];}),record ? record.material_id : (m&&m.id))+'</select>'+
+      input('mlp-price','قیمت',record ? record.price : (m&&m.price),'number','مثلاً 2800000')+
+      input('mlp-unit','واحد قیمت',record ? record.price_unit : (m&&m.price_unit||'مترمربع'))+
+      '<label>واحد پول</label><select id="mlp-currency">'+optionsHtml([['تومان','تومان'],['ریال','ریال'],['دلار','دلار'],['یورو','یورو']],record ? record.currency : (m&&m.currency||'تومان'))+'</select>'+
+      input('mlp-date','تاریخ',record ? record.recorded_at : (m&&m.price_updated_at),'date')+
+      '<label>شرکت</label><select id="mlp-supplier"><option value="">—</option>'+optionsHtml(ML.suppliers.map(function(s){return [s.id,s.name];}),record ? record.supplier_id : (m&&m.supplier_id))+'</select>'+
+      input('mlp-source','منبع',record ? record.source : (m&&m.price_source), 'text','پیش‌فاکتور / واتساپ / سایت')+
+    '</div>'+ta('mlp-note','یادداشت',record ? record.note : '')+
+    '<div class="ml-form-note">'+(record?'این رکورد تاریخچه ویرایش می‌شود و یک رکورد جدید ساخته نمی‌شود.':'ثبت قیمت جدید علاوه بر قیمت فعلی، در تاریخچه هم ذخیره می‌شود.')+'</div>';
+    modal(record?'ویرایش رکورد قیمت':'ثبت قیمت جدید',body,'<button class="btn" onclick="MaterialLab.savePrice(\''+(priceId||'')+'\')">ذخیره</button>',false);
   }
 
-  async function savePrice(){
+  async function savePrice(priceId){
     if(!isAdmin()) return;
     var mid=document.getElementById('mlp-material').value;
     var price=Number(document.getElementById('mlp-price').value||0);
     if(!mid || price<=0) return toast('متریال و قیمت را وارد کن.');
     var p={
-      material_id:mid,
-      price:price,
+      material_id:mid, price:price,
       price_unit:document.getElementById('mlp-unit').value.trim()||'مترمربع',
       currency:document.getElementById('mlp-currency').value||'تومان',
       supplier_id:document.getElementById('mlp-supplier').value||null,
       source:document.getElementById('mlp-source').value.trim()||null,
       note:document.getElementById('mlp-note').value.trim()||null,
-      recorded_at:document.getElementById('mlp-date').value||new Date().toISOString().slice(0,10),
-      created_by:userId()
+      recorded_at:document.getElementById('mlp-date').value||new Date().toISOString().slice(0,10)
     };
+    if(priceId){
+      var ur=await sb.from('material_price_history').update(p).eq('id',priceId);
+      if(ur.error) return toast('رکورد قیمت به‌روزرسانی نشد: '+ur.error.message);
+      var all=ML.prices.filter(function(x){return x.material_id===mid;});
+      var isLatest=!all.length || all.every(function(x){return x.id===priceId || String(x.recorded_at||'')<=String(p.recorded_at||'');});
+      if(isLatest){
+        var upd={price:p.price,price_unit:p.price_unit,currency:p.currency,price_source:p.source,price_updated_at:p.recorded_at,supplier_id:p.supplier_id,updated_at:new Date().toISOString()};
+        var ur2=await sb.from('materials').update(upd).eq('id',mid);
+        if(ur2.error) console.warn('material current price sync',ur2.error.message);
+      }
+      closeModal(); toast('رکورد قیمت به‌روزرسانی شد ✅'); await load(); refreshDom(); return;
+    }
+    p.created_by=userId();
     var r=await sb.from('material_price_history').insert([p]);
     if(r.error) return toast('قیمت ثبت نشد: '+r.error.message);
-    var upd=await sb.from('materials').update({
+    var upd2=await sb.from('materials').update({
       price:p.price,price_unit:p.price_unit,currency:p.currency,
       price_source:p.source,price_updated_at:p.recorded_at,supplier_id:p.supplier_id||((findMaterial(mid)||{}).supplier_id),
       updated_at:new Date().toISOString()
     }).eq('id',mid);
-    if(upd.error) console.warn('material current price',upd.error.message);
+    if(upd2.error) console.warn('material current price',upd2.error.message);
     closeModal(); toast('قیمت ثبت شد ✅'); await load(); refreshDom();
   }
 
@@ -1134,6 +1203,9 @@
     addDetailBoard:addDetailBoard,
     quote:quote,
     updateQuoteStatus:updateQuoteStatus,
+    openQuote:openQuote,
+    saveQuote:saveQuote,
+    deleteQuote:deleteQuote,
     openPrice:openPrice,
     savePrice:savePrice,
     deletePrice:deletePrice,
